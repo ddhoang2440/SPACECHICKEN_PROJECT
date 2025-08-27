@@ -11,10 +11,12 @@ public:
     std::list<Entity*>* entityList = nullptr;
     float fireEggTimer = 0;
     float fireLaserTimer = 0; // Thời gian bắn tia laze
-    int hp = 100;
-    bool isUsingLaser = false; // Biến để xác định xem boss đang sử dụng tia laze hay trứng
+    int hp = 200;
+    bool isUsingLaser = true; // Biến để xác định xem boss đang sử dụng tia laze hay trứng
 
     Boss(Animation* eggReal, std::list<Entity*>* entityListReal, Animation* lazeReal);
     void update() override;
-    void draw(RenderWindow& app) override;
+    void draw(RenderWindow& app) ;
+    void drawHp(RenderWindow& app);
+
 };
