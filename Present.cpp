@@ -1,102 +1,106 @@
 #include "Present.h"
-#include "Entity.h"
-// IMPLEMENTATION
-Present::Present(): Entity(){
-    name_ = BonusType(rand() % 4); // Chọn ngẫu nhiên một loại quà
-    speed_ = 5.0f;                 // Tốc độ mặc định
-    is_on_screen_ = true;
+#include <iostream>
 
-    // Tải texture dựa trên loại quà
-    if (name_ == ATOMIC_POWER){
-        texture_.loadFromFile("res/image/power_up.png");
-    }else if (name_ == NEUTRON){
-        texture_.loadFromFile("res/image/neutron_gift.png");
-    }else if (name_ == ARROW){
-        texture_.loadFromFile("res/image/arrow_gift.png");
-    }else if (name_ == BORON){
-        texture_.loadFromFile("res/image/boron_gift.png");
-    }else if(name_ == SHIELD){
-        texture_.loadFromFile("res/image/shield.png");
-    }else if(name_ == LIFE){
-        texture_.loadFromFile("res/image/heart.png");
-    }
-    anim_.sprite_.setTexture(texture_);
+Present::Present()
+    : Entity(), speed_(5), kind_of_present_(static_cast<BonusType>(std::rand() % 6)), is_on_screen_(true)
+{
+    x = 0;
+    y = 0;
+    radius_ = PRESENT_DEFAULT_WIDTH / 2;
+    load_texture();
+    anim_ = Animation(texture_, 0, 0, PRESENT_DEFAULT_WIDTH, PRESENT_DEFAULT_HEIGHT, 1, 0);
+    anim_.sprite_.setPosition(x, y);
     anim_.sprite_.setOrigin(texture_.getSize().x / 2.0f, texture_.getSize().y / 2.0f);
-    anim_.sprite_.setScale(1.0f, 1.0f); // Tùy chỉnh nếu cần
 }
 
-Present::Present(BonusType name)
+Present::Present(BonusType kind)
+    : Entity(), speed_(5), kind_of_present_(kind), is_on_screen_(true)
 {
-    name_ = name;
-    speed_ = 5.0f;
-    is_on_screen_ = true;
-
-    // Tải texture dựa trên loại quà
-    if (name_ == ATOMIC_POWER){
-        texture_.loadFromFile("res/image/power_up.png");
-    }else if (name_ == NEUTRON){
-        texture_.loadFromFile("res/image/neutron_gift.png");
-    }else if (name_ == ARROW){
-        texture_.loadFromFile("res/image/arrow_gift.png");
-    }else if (name_ == BORON){
-        texture_.loadFromFile("res/image/boron_gift.png");
-    }else if(name_ == SHIELD){
-        texture_.loadFromFile("res/image/shield.png");
-    }else if(name_ == LIFE){
-        texture_.loadFromFile("res/image/heart.png");
-    }
-    anim_.sprite_.setTexture(texture_);
+    x = 0;
+    y = 0;
+    radius_ = PRESENT_DEFAULT_WIDTH / 2;
+    load_texture();
+    anim_ = Animation(texture_, 0, 0, PRESENT_DEFAULT_WIDTH, PRESENT_DEFAULT_HEIGHT, 1, 0);
+    anim_.sprite_.setPosition(x, y);
     anim_.sprite_.setOrigin(texture_.getSize().x / 2.0f, texture_.getSize().y / 2.0f);
-    anim_.sprite_.setScale(1.0f, 1.0f);
 }
 
 Present::~Present()
 {
 }
 
-void Present::setName(BonusType name)
+void Present::load_texture()
 {
-    name_ = name;
-    if (name_ == ATOMIC_POWER){
-        texture_.loadFromFile("res/image/power_up.png");
-    }else if (name_ == NEUTRON){
-        texture_.loadFromFile("res/image/neutron_gift.png");
-    }else if (name_ == ARROW){
-        texture_.loadFromFile("res/image/arrow_gift.png");
-    }else if (name_ == BORON){
-        texture_.loadFromFile("res/image/boron_gift.png");
-    }else if(name_ == SHIELD){
-        texture_.loadFromFile("res/image/shield.png");
-    }else if(name_ == LIFE){
-        texture_.loadFromFile("res/image/heart.png");
+    switch (kind_of_present_)
+    {
+    case ATOMIC_POWER:
+        if (!texture_.loadFromFile("res/image/power_up.png"))
+            std::cout << "Failed to load texture: res/image/power_up.png" << std::endl;
+        break;
+    case NEUTRON:
+        if (!texture_.loadFromFile("res/image/neutron_gift.png"))
+            std::cout << "Failed to load texture: res/image/neutron_gift.png" << std::endl;
+        break;
+    case ARROW:
+        if (!texture_.loadFromFile("res/image/arrow_gift.png"))
+            std::cout << "Failed to load texture: res/image/arrow_gift.png" << std::endl;
+        break;
+    case BORON:
+        if (!texture_.loadFromFile("res/image/boron_gift.png"))
+            std::cout << "Failed to load texture: res/image/boron_gift.png" << std::endl;
+        break;
+    case SHIELD:
+        if (!texture_.loadFromFile("res/image/bo.png"))
+            std::cout << "Failed to load texture: res/image/shield.png" << std::endl;
+        break;
+    case LIFE:
+        if (!texture_.loadFromFile("res/image/heart.png"))
+            std::cout << "Failed to load texture: res/image/heart.png" << std::endl;
+        break;
+    default:
+        std::cout << "Unknown present type: " << kind_of_present_ << std::endl;
+        break;
     }
-    anim_.sprite_.setTexture(texture_);
-    anim_.sprite_.setOrigin(texture_.getSize().x / 2.0f, texture_.getSize().y / 2.0f);
 }
 
-void Present::update(float deltaTime)
+void Present::set_rect_cordinate(const float& x, const float& y)
 {
-    if (!is_on_screen_) return;
+    this->x = x;
+    this->y = y;
+    anim_.sprite_.setPosition(x, y);
+}
 
-    // Di chuyển quà xuống dưới
-    anim_.sprite_.move(0, speed_ * deltaTime);
-
-    // Kiểm tra ra khỏi màn hình
-    if (anim_.sprite_.getPosition().y > 1080) // Giả sử SCREEN_HEIGHT = 1080
-    {
-        is_on_screen_ = false;
-    }
+sf::FloatRect Present::get_rect() const
+{
+    float width = (kind_of_present_ == ATOMIC_POWER) ? PRESENT_ATOMIC_WIDTH : PRESENT_DEFAULT_WIDTH;
+    float height = (kind_of_present_ == ATOMIC_POWER) ? PRESENT_ATOMIC_HEIGHT : PRESENT_DEFAULT_HEIGHT;
+    return sf::FloatRect(x - width / 2, y - height / 2, width, height);
 }
 
 void Present::render(sf::RenderWindow& window)
 {
     if (!is_on_screen_) return;
+    draw(window);
+}
 
-    // Điều chỉnh kích thước dựa trên loại quà
-    if (name_ == ATOMIC_POWER)
-        anim_.sprite_.setScale(40.0f / texture_.getSize().x, 50.0f / texture_.getSize().y);
-    else
-        anim_.sprite_.setScale(49.0f / texture_.getSize().x, 58.0f / texture_.getSize().y);
-
+void Present::draw(sf::RenderWindow& window)
+{
+    if (!is_on_screen_) return;
+    float width = (kind_of_present_ == ATOMIC_POWER) ? PRESENT_ATOMIC_WIDTH : PRESENT_DEFAULT_WIDTH;
+    float height = (kind_of_present_ == ATOMIC_POWER) ? PRESENT_ATOMIC_HEIGHT : PRESENT_DEFAULT_HEIGHT;
+    anim_ = Animation(texture_, 0, 0, width, height, 1, 0);
+    anim_.sprite_.setPosition(x, y);
+    anim_.sprite_.setOrigin(width / 2.0f, height / 2.0f);
+    anim_.sprite_.setScale(width / texture_.getSize().x, height / texture_.getSize().y);
     window.draw(anim_.sprite_);
+}
+
+void Present::update()
+{
+    if (!is_on_screen_) return;
+    y += speed_;
+    anim_.sprite_.setPosition(x, y);
+    if (y > SCREEN_HEIGHT)
+        is_on_screen_ = false;
+    anim_.update();
 }
