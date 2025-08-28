@@ -73,22 +73,52 @@ sf::FloatRect MainObject::get_rect() const
 }
 void MainObject::handle_pull(float dt)
 {
-    if (!being_pulled_) return;
+    if (!being_pulled_ || !pull_to_center_) return;
+
     float dx = target_pos_.x - x;
     float dy = target_pos_.y - y;
     float dist = std::sqrt(dx * dx + dy * dy);
+
     if (dist > 1.f)
     {
-        x += (dx / dist) * pull_speed_ * dt;
-        y += (dy / dist) * pull_speed_ * dt;
+        // Di chuyển player về giữa
+        x += (dx / dist) * pull_speed_ * dt * 60.0f;
+        y += (dy / dist) * pull_speed_ * dt * 60.0f;
         anim_.sprite_.setPosition(x, y);
+
+        // Đồng bộ chuột với player trong quá trình kéo
+        if (window) {
+            sf::Mouse::setPosition(sf::Vector2i(static_cast<int>(x), static_cast<int>(y)), *window);
+        }
     }
     else
     {
-        being_pulled_ = false; // Ngừng kéo khi đến gần mục tiêu
+        // Đã về đến giữa, dừng kéo
+        being_pulled_ = false;
+        pull_to_center_ = false;
+
+        // Đảm bảo chuột ở đúng vị trí giữa
+        if (window) {
+            sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), *window);
+        }
+
+        std::cout << "Player pulled to center completed" << std::endl;
     }
 }
-
+void MainObject::start_pull_to_center()
+{
+    being_pulled_ = true;
+    pull_to_center_ = true; // <== BẬT CHẾ ĐỘ KÉO VỀ GIỮA
+    target_pos_.x = SCREEN_WIDTH / 2.0f;
+    target_pos_.y = SCREEN_HEIGHT / 2.0f;
+    
+    // Đặt chuột về giữa ngay lập tức để bắt đầu
+    if (window) {
+        sf::Mouse::setPosition(sf::Vector2i(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2), *window);
+    }
+    
+    std::cout << "Starting pull to center" << std::endl;
+}
 //void MainObject::render_animation(sf::RenderWindow& window, const double& scale)
 //{
 //    if (health_ <= 0) return;
@@ -154,6 +184,7 @@ void MainObject::update()
     {
         anim_.update();
     }
+    
 }
 
 void MainObject::handling_movement(sf::Event& event) {
