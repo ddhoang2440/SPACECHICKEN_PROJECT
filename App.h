@@ -17,6 +17,8 @@
 #include "Present.h"
 #include "BackGround.h"
 
+#define M_PI 3.14159265358979323846
+
 class App {
 private:
     // Window and UI
@@ -66,6 +68,9 @@ private:
     bool allLevel2AsteroidDead();
     bool allBossDead();
     void processChickenVsPlayer(float dt);
+
+    void init();
+
     void processAsteroidVsPlayer(float dt);
     void processBossVsPlayer(float dt);
     void introBeforeLevel(float dt);
@@ -75,6 +80,10 @@ private:
     // Test methods (commented if not used)
     // bool allEnemiesDead();
     // void cleanUpObjects();
+    int current_wave_ = 0;
+    void spawn_wave1();
+    void spawn_wave2();
+
 
 public:
     App();

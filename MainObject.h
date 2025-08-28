@@ -86,12 +86,14 @@ public:
     bool get_got_hit() const { return got_hit_; }
     void set_got_hit(bool hit) { got_hit_ = hit; }
     void handle_pull(float dt);
+    void set_window(sf::RenderWindow* window_) { window = window_; }
 
     bool being_pulled_ = false;
+    bool pull_to_center_ = false;
     float pull_speed_ = 100.f; // Tốc độ kéo
     sf::Vector2f target_pos_;
-
-    void set_being_pulled(bool val, sf::Vector2f target = { 0.f, 0.f });
-    void handle_pull(float dt);
+    void stop_pull() { being_pulled_ = false; pull_to_center_ = false; }
+    void start_pull_to_center();
+    bool is_pulling_to_center() const { return pull_to_center_; }
 };
 #endif
