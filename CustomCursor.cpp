@@ -1,9 +1,15 @@
-﻿// CustomCursor.cpp
+// CustomCursor.cpp
 #include "CustomCursor.h"
 #include <iostream>
 
 CustomCursor::CustomCursor() : visible(true) {
     sprite.setScale(0.1f, 0.1f);
+
+﻿#include "CustomCursor.h"
+#include <iostream>
+
+CustomCursor::CustomCursor() {
+    sprite.setScale(0.1f, 0.1f); 
 }
 
 bool CustomCursor::loadFromFile(const std::string& path) {
@@ -13,6 +19,7 @@ bool CustomCursor::loadFromFile(const std::string& path) {
     }
     sprite.setTexture(texture);
 
+
     sprite.setScale(0.08f, 0.08f);
     sprite.setColor(sf::Color::White);
     sprite.setOrigin(texture.getSize().x / 2.f, texture.getSize().y / 2.f);
@@ -20,13 +27,15 @@ bool CustomCursor::loadFromFile(const std::string& path) {
 }
 
 void CustomCursor::update(const sf::RenderWindow& window) {
+
     if (!visible) return; // nếu ẩn thì không cập nhật
+
     sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     sprite.setPosition(mousePos);
 }
 
 void CustomCursor::draw(sf::RenderWindow& window) const {
-    if (visible) {
+if (visible) {
         window.draw(sprite);
     }
 }

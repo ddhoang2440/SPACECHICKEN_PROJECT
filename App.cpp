@@ -159,6 +159,7 @@ void App::processEvents() {
     }
 }
 
+
 void App::update(float dt)
 {
     // cập nhật vị trí chuột (chỉ có tác dụng nếu cursor visible = true)
@@ -194,14 +195,17 @@ void App::update(float dt)
                 }
                 else if (menu.getSelectedIndex() == 3) // Quit
                 {
+
                     window.close();
                 }
             }
         }
         break;
 
+
     case GameState::PLAYING:
         cursor.setVisible(false);  // ẩn cursor khi chơi
+
 
         cleanUpExplosions();
         cleanUpChickens();
@@ -239,33 +243,36 @@ void App::update(float dt)
             processBossVsPlayer(dt);
             if (allBossDead() && player.get_health() > 0)
             {
+
                 currentLevel = 4;
                 for (auto* b : bosses) delete b;
                 bosses.clear();
                 playMusicLevel(currentLevel);
             }
         }
-        else if (player.get_health() <= 0 && playerWantToPlayAgain)
-        {
+        else if (player.get_health() <= 0 && playerWantToPlayAgain) {
             initGame();
             playerWantToPlayAgain = false;
+            currentLevel = 1;
+            levelManager.setCurrentLevel(currentLevel);
+            playMusicLevel(currentLevel);
         }
 
         ui.update(score, player.get_health(), currentLevel);
         break;
-
     case GameState::PAUSED:
         cursor.setVisible(true);   // hiện cursor trong pause menu
+
         pauseMenu.update(dt);
         break;
 
     case GameState::SETTINGS:
+
         cursor.setVisible(true);   // hiện cursor trong settings
         settingsMenu.update(dt);
         break;
     }
 }
-
 
 void App::render() {
     window.clear();
@@ -405,28 +412,9 @@ void App::initPlayer()
     player.set_rect_cordinate(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
     player.set_health(5);
     player.set_ammo_level(0);
+
     window.setMouseCursorVisible(false);
 }
-
-//void App::initChickenLevel1() {
-//    chickens.clear();
-//    const int chicken_number = 18;
-//    for (int j = 0; j < 3; ++j) {
-//        for (int i = (j * chicken_number) / 3; i < ((j + 1) * chicken_number) / 3; ++i) {
-//            Chicken* chicken = new Chicken;
-//            chicken->load_animation_sprite("res/image/chicken123.png");
-//            chicken->set_clips();
-//            chicken->set_rect_cordinate(100 + (i - (j * chicken_number / 3)) * 100, j * 100 - 100);
-//            chicken->set_rect_width_and_height(75, 68);
-//            chicken->set_is_on_screen(true);
-//            chicken->set_health(1);
-//            chicken->set_speed(3);
-//            chicken->generate_present();
-//            chickens.push_back(chicken);
-//        }
-//    }
-//    std::cout << "Initialized " << chickens.size() << " chickens for level 1" << std::endl;
-//}
 
 void App::initAsteroid() {
     asteroids.clear();
@@ -512,6 +500,7 @@ bool App::allBossDead() {
     }
     return dead;
 }
+
 void App::spawn_wave1()
 {
     current_wave_ = 1;
@@ -636,8 +625,10 @@ void App::processChickenVsPlayer(float dt)
             exp->set_coordinates(chicken->x, chicken->y);
             exp->set_is_on_screen(true);
             explosions.push_back(exp);
+
             if (chicken->get_has_a_present())
                 chicken->generate_present();
+
             chicken->set_is_on_screen(false);
             continue;
         }
@@ -833,6 +824,7 @@ void App::cleanUpExplosions() {
     }
     std::cout << "Explosions remaining: " << explosions.size() << std::endl;
 }
+
 void App::cleanUpChickens()
 {
     for (size_t i = 0; i < chickens.size(); )
