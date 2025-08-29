@@ -26,7 +26,6 @@ Chicken::Chicken()
     broken_egg_time_ = sf::Time::Zero;
     last_wing_time_ = sf::Time::Zero;
     last_move_time_ = sf::Time::Zero;
-
     // Khởi tạo has_wing_ và has_present_ với xác suất
     has_wing_ = dist_100_(rng_) <= 70;
     has_present_ = dist_100_(rng_) <= 50;
@@ -39,12 +38,10 @@ Chicken::Chicken()
     if (!wing_texture_.loadFromFile("res/image/meat.png")) {
         std::cerr << "Failed to load wing texture: res/image/meat.png" << std::endl;
     }
-
     width_of_sprite_ = texture_.getSize().x / CHICKEN_NUMS_FRAME;
     height_of_sprite_ = texture_.getSize().y;
     anim_ = Animation(texture_, 0, 0, width_of_sprite_, height_of_sprite_, CHICKEN_NUMS_FRAME, 0.05f);
     anim_.sprite_.setPosition(x, y);
-
     // Load sounds
     if (!chicken_got_hit_buffer_.loadFromFile("res/sound/CHICKEN_GOT_HIT.wav")) {
         std::cerr << "Failed to load chicken hit sound: res/sound/CHICKEN_GOT_HIT.wav" << std::endl;
@@ -57,18 +54,15 @@ Chicken::Chicken()
     if (!eggs_get_destroyed_buffer_.loadFromFile("res/sound/Egg_Destroy.wav")) {
         std::cerr << "Failed to load egg destroyed sound: res/sound/Egg_Destroy.wav" << std::endl;
     }
-
     chicken_got_hit_sound_.setBuffer(chicken_got_hit_buffer_);
     chicken_laying_eggs_sound_.setBuffer(chicken_laying_eggs_buffer_);
     eggs_get_destroyed_sound_.setBuffer(eggs_get_destroyed_buffer_);
-
     // Khởi tạo present_ nếu cần, sử dụng rand()
     if (dist_100_(rng_) <= 50) { // 50% chance để có present
         has_present_ = true;
         BonusType kind = static_cast<BonusType>(dist_6_(rng_));
         present_ = std::make_unique<Present>(kind, x, y);
     }
-
 }
 
 Chicken::~Chicken()
@@ -99,17 +93,25 @@ void Chicken::load_animation_sprite(const std::string& file)
     anim_ = Animation(texture_, 0, 0, width_of_sprite_, height_of_sprite_, CHICKEN_NUMS_FRAME, 0.05f);
     anim_.sprite_.setPosition(x, y);
     anim_.sprite_.setOrigin(width_of_sprite_ / 2.f, height_of_sprite_ / 2.f);
-
 }
 
 void Chicken::set_rect_cordinate(const float& x, const float& y)
 {
     this->x = x;
     this->y = y;
+
+//     anim_.sprite_.setPosition(x, y);
+//     wing_rect_.left = x - width_of_sprite_ / 2.f;
+//     wing_rect_.top = y - height_of_sprite_ / 2.f;
+//     wing_rect_.width = width_of_sprite_;
+
+    if (present_) {
+        present_->set_rect_cordinate(x, y); // Sync present position
+    }
     anim_.sprite_.setPosition(x, y);
-    wing_rect_.left = x - width_of_sprite_ / 2.f;
-    wing_rect_.top = y - height_of_sprite_ / 2.f;
-    wing_rect_.width = width_of_sprite_;
+    wing_rect_.left   = x - width_of_sprite_  / 2.f;
+    wing_rect_.top    = y - height_of_sprite_ / 2.f;
+    wing_rect_.width  = width_of_sprite_;
     wing_rect_.height = height_of_sprite_;
 }
 
@@ -180,6 +182,11 @@ void Chicken::render_animation(sf::RenderWindow& window, const double& scale)
             wing_rect_.width = 0;
             wing_rect_.height = 0;
         }
+    }
+
+    // Render present if it exists and is on-screen
+    if (present_ && present_->get_is_on_screen()) {
+        present_->render(window); // Assuming Present has a render method
     }
 }
 
@@ -273,6 +280,7 @@ void Chicken::handle_shooting_eggs_toward_player(MainObject* main_object, float 
     shoot_timer_ += dt;
     if (shoot_timer_ < shoot_interval_) return;
 
+
     if (dist_100_(rng_) <= egg_shooting_prob_) {
         double dx = main_object->get_rect().left + main_object->get_rect().width / 2 - x;
         double dy = main_object->get_rect().top + main_object->get_rect().height / 2 - y;
@@ -286,6 +294,7 @@ void Chicken::handle_shooting_eggs_toward_player(MainObject* main_object, float 
                 std::cerr << "Failed to create Egg object" << std::endl;
                 return;
             }
+
             egg->set_rect_cordinate_width_and_height(x, y, EGG_WIDTH, EGG_HEIGHT);
             egg->set_v_x(egg_speed * unit_x);
             egg->set_v_y(egg_speed * unit_y);
@@ -294,6 +303,7 @@ void Chicken::handle_shooting_eggs_toward_player(MainObject* main_object, float 
             chicken_laying_eggs_sound_.play();
         }
         shoot_timer_ = 0.f;
+
     }
 }
 
@@ -329,6 +339,7 @@ void Chicken::play_laying_eggs_sound()
 {
     chicken_laying_eggs_sound_.play();
 }
+
 
 std::unique_ptr<Present> Chicken::generate_present()
 {
@@ -367,6 +378,7 @@ void Chicken::moving_parabola()
     double k = SCREEN_HEIGHT / 2.0;
     x += x_direction_ * speed_;
     y = a * std::pow(x - h, 2) + k;
+
     if (x <= 0 || x + width_of_sprite_ >= SCREEN_WIDTH) x_direction_ *= -1;
     anim_.sprite_.setPosition(x, y);
     wing_rect_.left = x - wing_rect_.width / 2;
@@ -391,7 +403,6 @@ void Chicken::moving_up_and_down()
     wing_rect_.top = y - wing_rect_.height / 2;
 }
 
-
 void Chicken::moving_back_and_forth()
 {
     if (!is_on_screen_ || health_ <= 0) return;
@@ -401,8 +412,6 @@ void Chicken::moving_back_and_forth()
     wing_rect_.left = x - wing_rect_.width / 2;
     wing_rect_.top = y - wing_rect_.height / 2;
 }
-
-
 
 void Chicken::moving_like_a_circle()
 {
@@ -433,7 +442,9 @@ void Chicken::moving_toward_the_player(MainObject* main_object)
     double dx = main_object->get_rect().left + main_object->get_rect().width / 2 - x;
     double dy = main_object->get_rect().top + main_object->get_rect().height / 2 - y;
     double distance = std::sqrt(dx * dx + dy * dy);
+
     if (distance > 0) {
+
         x += (dx / distance) * speed_;
         y += (dy / distance) * speed_;
         anim_.sprite_.setPosition(x, y);
