@@ -9,8 +9,10 @@ const sf::Time MAIN_OBJECT_spritetime = sf::milliseconds(100);
 
 MainObject::MainObject()
     : Entity(), is_win_(false), spinning_angle_(0), width_of_sprite_(0), height_of_sprite_(0),
-    health_(100), got_hit_(false), invincible_time_(0.f), isColliding_(false), ammo_level_(0), number_of_wings_(0), slow_move_(false), ammo_type_(0)
+    health_(100), got_hit_(false), invincible(false), isColliding_(false), ammo_level_(0), number_of_wings_(0), slow_move_(false), ammo_type_(0)
 {
+    this->shots_ = 1;
+	this->ammo_type_ = 3; // Mặc định là mũi tên
     x = SCREEN_WIDTH / 2;
     y = SCREEN_HEIGHT - 100;
     radius_ = 50; // Example collision radius
@@ -28,7 +30,6 @@ MainObject::MainObject()
     if (!getting_present_sound_buffer_.loadFromFile("res/sound/present.wav"))
         std::cout << "Failed to load present sound" << std::endl;
     getting_present_sound_.setBuffer(getting_present_sound_buffer_);
-    invincible_time_ = 0.f;
 }
 
 MainObject::~MainObject()
@@ -168,14 +169,43 @@ void MainObject::render_animation(sf::RenderWindow& window, const double& scale)
     window.draw(anim_.sprite_);
 }
 
-void MainObject::update()
+void MainObject::update(float dt)
 {
-    if (invincible_time_ > 0) {
-        invincible_time_ -= 0.016f; // giả sử game chạy ~60fps
-        if (invincible_time_ < 0) invincible_time_ = 0;
+    // Kiểm tra trạng thái bất tử
+    if (invincible)
+    {
+        // Nếu đã qua 3 giây kể từ khi bật bất tử
+        if (immunity_timer_.getElapsedTime().asSeconds() >= 3.0f)
+        {
+            invincible = false; // Hết bất tử
+        }
     }
+    for (auto it = ammo_list.begin(); it != ammo_list.end(); )
+    {
+        AmmoObject* bullet = *it;
+        if (bullet->is_alive())
+        {
+            float speed = bullet->get_speed();
+            float rotation = bullet->get_rotation();
+            float rad = rotation * 3.1415926535f / 180.0f;
+            float dx = speed*200 * std::sin(rad) * dt;
+            float dy = -speed*200 * std::cos(rad) * dt;
 
+            sf::Vector2f pos = bullet->get_sprite().getPosition();
+            bullet->set_rect_cordinate(pos.x + dx, pos.y + dy);
+
+            if (pos.y < 0) bullet->set_alive(false);
+
+            ++it;
+        }
+        else
+        {
+            delete* it;
+            it = ammo_list.erase(it);
+        }
+    }
     if (health_ <= 0) return;
+
     if (slow_move_)
     {
         slowly_move_from_bottom();
@@ -184,8 +214,8 @@ void MainObject::update()
     {
         anim_.update();
     }
-    
 }
+
 
 void MainObject::handling_movement(sf::Event& event) {
     if (health_ <= 0 || slow_move_ || is_paused) return;
@@ -206,37 +236,207 @@ void MainObject::handling_movement(sf::Event& event) {
     }
 }
 
+//void MainObject::handling_shooting(sf::Event& event)
+//{
+//    if (health_ <= 0 || is_paused) return;
+//
+//    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+//    {
+//        shoot_sound_.play();
+//        auto p_ammo = std::make_unique<ArrowAmmo>();
+//        p_ammo->set_rect_cordinate(x, y - height_of_sprite_ / 2);
+//        p_ammo->set_type(AmmoObject::AmmoType(ammo_type_));
+//        p_ammo->set_speed(10 + ammo_level_ * 2);
+//        p_ammo->set_alive(true);
+//        ammo_list.push_back(p_ammo.release());
+//    }
+//}
+//
+//void MainObject::render_shooting(sf::RenderWindow& window)
+//{
+//    for (auto it = ammo_list.begin(); it != ammo_list.end();)
+//    {
+//        if (!(*it)->is_alive())
+//        {
+//            delete* it;
+//            it = ammo_list.erase(it);
+//        }
+//        else
+//        {
+//            (*it)->update();
+//            (*it)->draw(window);
+//            ++it;
+//        }
+//    }
+//}
 void MainObject::handling_shooting(sf::Event& event)
 {
-    if (health_ <= 0 || is_paused) return;
+    if (health_ <= 0 || slow_move_) return;
 
-    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left)
+    // Shoot on Space or left mouse click with 0.4s cooldown
+    if ((event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left))
     {
-        shoot_sound_.play();
-        auto p_ammo = std::make_unique<ArrowAmmo>();
-        p_ammo->set_rect_cordinate(x, y - height_of_sprite_ / 2);
-        p_ammo->set_type(AmmoObject::AmmoType(ammo_type_));
-        p_ammo->set_speed(10 + ammo_level_ * 2);
-        p_ammo->set_alive(true);
-        ammo_list.push_back(p_ammo.release());
+        if (shoot_timer_.getElapsedTime().asSeconds() >= 0.4f)
+        {
+            // Map ammo_type to bullet properties
+            std::string ammo_type_str;
+            AmmoType bullet_type;
+            float bullet_speed;
+            int damage;
+
+            switch (ammo_type_)
+            {
+            case 1:
+                ammo_type_str = "NEUTRON";
+                bullet_type = AmmoType::NEURON;
+                bullet_speed = 6.5f;
+                damage = 1 + ammo_level_;
+                break;
+            case 2:
+                ammo_type_str = "BORON";
+                bullet_type = AmmoType::BORON;
+                bullet_speed = 8.0f;
+                damage = 2 + ammo_level_;
+                break;
+            case 3:
+                ammo_type_str = "arrow";
+                bullet_type = AmmoType::ARROW;
+                bullet_speed = 7.25f;
+                damage = 1 + ammo_level_;
+                break;
+            default:
+                std::cerr << "Error: Invalid ammo_type " << ammo_type_ << std::endl;
+                return;
+            }
+
+            // Calculate base position (center of player sprite)
+            /*float sprite_width = texture_.getSize().x / static_cast<float>(MAIN_OBJECT_NUMS_FRAME);
+            float base_x = x + sprite_width / 2.0f;
+            float base_y = y - 50.0f;*/
+            float base_x = x;
+			float base_y = y - height_of_sprite_ / 2;
+
+            // Create bullets based on shots_
+            for (int i = 0; i < shots_; ++i)
+            {
+                // Create bullet based on type
+                AmmoObject* bullet = nullptr;
+                switch (bullet_type)
+                {
+                case AmmoType::NEURON:
+                    bullet = new NeuronAmmo();
+                    break;
+                case AmmoType::BORON:
+                    bullet = new BoronAmmo();
+                    break;
+                case AmmoType::ARROW:
+                    bullet = new ArrowAmmo();
+                    break;
+                default:
+                    continue; // Skip invalid bullet types
+                }
+
+                // Load bullet texture
+                std::string path_ammo = "res/image/" + ammo_type_str + (ammo_type_ != 3 ? std::to_string(ammo_level_) : "") + ".png";
+                if (!bullet->load_static_ammo_picture(path_ammo))
+                {
+                    std::cerr << "Error: Could not load " << path_ammo << std::endl;
+                    delete bullet;
+                    continue;
+                }
+                else {
+                    cout<< "Loaded ammo texture: " << path_ammo <<"damage: "<<damage<< std::endl;
+                }
+
+                // Set bullet properties
+                bullet->set_alive(true);
+                //bullet->set_can_move(true);
+                bullet->set_speed(bullet_speed);
+                bullet->set_damage(damage);
+
+                // Set position and rotation based on number of shots
+                if (shots_ == 1)
+                {
+                    bullet->set_rect_cordinate(base_x, base_y);
+                }
+                else if (shots_ == 2)
+                {
+                    bullet->set_rect_cordinate(base_x + (i == 0 ? 23.0f : -23.0f), base_y);
+                }
+                else if (shots_ == 3)
+                {
+                    if (i == 0)
+                    {
+                        bullet->set_rotation(20.0f);
+                        bullet->set_rect_cordinate(base_x + 10.0f, base_y);
+                    }
+                    else if (i == 1)
+                    {
+                        bullet->set_rotation(-20.0f);
+                        bullet->set_rect_cordinate(base_x - 10.0f, base_y);
+                    }
+                    else
+                    {
+                        bullet->set_rect_cordinate(base_x, base_y);
+                    }
+                }
+
+                ammo_list.push_back(bullet);
+            }
+
+            // Play shoot sound
+            if (shoot_sound_.getStatus() != sf::Sound::Playing)
+            {
+                shoot_sound_.play();
+            }
+            shoot_timer_.restart();
+        }
     }
 }
 
-void MainObject::render_shooting(sf::RenderWindow& window)
+//void MainObject::render_shooting(sf::RenderWindow& window_,float deltaTime)
+//{
+//    if (health_ <= 0 || slow_move_) return;
+//
+//    for (auto it = ammo_list.begin(); it != ammo_list.end();)
+//    {
+//        AmmoObject* bullet = *it;
+//        if (bullet->is_alive())
+//        {
+//            // Update bullet position based on rotation and speed
+//            float speed = bullet->get_speed();
+//            float rotation = bullet->get_rotation();
+//            float rad = rotation * 3.1415926535f / 180.0f; // Convert to radians
+//            float dx = speed * std::sin(rad) * deltaTime;
+//            float dy = -speed * std::cos(rad) * deltaTime; // Negative for upward movement
+//            sf::Vector2f pos = bullet->get_sprite().getPosition();
+//            bullet->set_rect_cordinate(pos.x + dx, pos.y + dy);
+//
+//            // Check if bullet is off-screen
+//            if (pos.y < 0)
+//            {
+//                bullet->set_alive(false);
+//            }
+//
+//            // Render bullet
+//            bullet->draw(window_);
+//            ++it;
+//        }
+//        else
+//        {
+//            delete* it;
+//            it = ammo_list.erase(it);
+//        }
+//    }
+//}
+void MainObject::render_shooting(sf::RenderWindow& window_)
 {
-    for (auto it = ammo_list.begin(); it != ammo_list.end();)
+    if (health_ <= 0 || slow_move_) return;
+
+    for (auto* bullet : ammo_list)
     {
-        if (!(*it)->is_alive())
-        {
-            delete* it;
-            it = ammo_list.erase(it);
-        }
-        else
-        {
-            (*it)->update();
-            (*it)->draw(window);
-            ++it;
-        }
+        if (bullet->is_alive())
+            bullet->draw(window_);
     }
 }
 
@@ -281,20 +481,39 @@ void MainObject::process_if_eat_wing_rect(Chicken* chicken)
 }
 void MainObject::process_if_hit_by_chicken(Chicken* chicken)
 {
-    if (invincible_time_ > 0) return; // Đang bất tử thì bỏ qua
+    if (invincible) {
+        // Nếu đang bất tử thì kiểm tra xem đã hết 1 giây chưa
+        if (immunity_timer_.getElapsedTime().asSeconds() >= 1.0f) {
+            invincible = false;
+        }
+        else {
+            return; // Chưa hết thì bỏ qua va chạm
+        }
+    }
 
     if (check_collision_2_rect(get_rect(), chicken->get_rect()) && chicken->get_is_on_screen() && health_ > 0)
     {
         health_--;
         hit_sound_.play();
         got_hit_ = true;
-        invincible_time_ = 1.0f; // Bất tử trong 1 giây
+        // Bật trạng thái bất tử và reset timer
+        invincible = true;
+        immunity_timer_.restart();
+		chicken->set_is_on_screen(false);
     }
 }
 
 void MainObject::process_if_hit_by_eggs(Chicken* chicken)
 {
-    if (invincible_time_ > 0) return; // Đang bất tử thì bỏ qua
+    if (invincible) {
+        // Nếu đang bất tử thì kiểm tra xem đã hết 1 giây chưa
+        if (immunity_timer_.getElapsedTime().asSeconds() >= 1.0f) {
+            invincible = false;
+        }
+        else {
+            return; // Chưa hết thì bỏ qua va chạm
+        }
+    }
 
     for (auto* egg : chicken->get_eggs_list())
     {
@@ -303,7 +522,9 @@ void MainObject::process_if_hit_by_eggs(Chicken* chicken)
             health_--;
             hit_sound_.play();
             got_hit_ = true;
-            invincible_time_ = 1.0f; // Bất tử trong 1 giây
+            // Bật trạng thái bất tử và reset timer
+            invincible = true;
+            immunity_timer_.restart();
             egg->set_alive(false);
             break; // Thoát vòng lặp sau khi bị hit bởi một quả trứng
         }
@@ -312,7 +533,15 @@ void MainObject::process_if_hit_by_eggs(Chicken* chicken)
 
 void MainObject::processing_if_hit_by_boss_egg(Boss* boss)
 {
-    if (invincible_time_ > 0) return; // Đang bất tử thì bỏ qua
+    if (invincible) {
+        // Nếu đang bất tử thì kiểm tra xem đã hết 1 giây chưa
+        if (immunity_timer_.getElapsedTime().asSeconds() >= 1.0f) {
+            invincible = false;
+        }
+        else {
+            return; // Chưa hết thì bỏ qua va chạm
+        }
+    }
 
     for (auto* egg : boss->get_egg_list())
     {
@@ -321,7 +550,9 @@ void MainObject::processing_if_hit_by_boss_egg(Boss* boss)
             health_--;
             hit_sound_.play();
             got_hit_ = true;
-            invincible_time_ = 1.0f; // Bất tử trong 1 giây
+            // Bật trạng thái bất tử và reset timer
+            invincible = true;
+            immunity_timer_.restart();
             egg->set_alive(false);
             break; // Thoát vòng lặp sau khi bị hit bởi một quả trứng
         }
@@ -330,14 +561,24 @@ void MainObject::processing_if_hit_by_boss_egg(Boss* boss)
 
 void MainObject::processing_if_hit_by_boss(Boss* boss)
 {
-    if (invincible_time_ > 0) return; // Đang bất tử thì bỏ qua
+    if (invincible) {
+        // Nếu đang bất tử thì kiểm tra xem đã hết 1 giây chưa
+        if (immunity_timer_.getElapsedTime().asSeconds() >= 1.0f) {
+            invincible = false;
+        }
+        else {
+            return; // Chưa hết thì bỏ qua va chạm
+        }
+    }
 
     if (check_collision_2_rect(get_rect(), boss->get_rect()) && boss->get_is_on_screen() && health_ > 0)
     {
         health_--;
         hit_sound_.play();
         got_hit_ = true;
-        invincible_time_ = 1.0f; // Bất tử trong 1 giây
+        // Bật trạng thái bất tử và reset timer
+        invincible = true;
+        immunity_timer_.restart();
     }
 }
 
@@ -374,30 +615,93 @@ void MainObject::process_shooting_if_hit_asteroid(Asteroid* asteroid) {
 
 void MainObject::process_if_hit_by_asteroid(Asteroid* asteroid)
 {
-    if (invincible_time_ > 0) return; // Đang bất tử thì bỏ qua
+    if (invincible) {
+        // Nếu đang bất tử thì kiểm tra xem đã hết 1 giây chưa
+        if (immunity_timer_.getElapsedTime().asSeconds() >= 1.0f) {
+            invincible = false;
+        }
+        else {
+            return; // Chưa hết thì bỏ qua va chạm
+        }
+    }
 
     if (check_collision_2_rect(get_rect(), asteroid->get_rect()) && asteroid->get_is_on_screen() && health_ > 0)
     {
         health_--;
         hit_sound_.play();
         got_hit_ = true;
-        invincible_time_ = 1.0f; // Bất tử trong 1 giây
+        // Bật trạng thái bất tử và reset timer
+        invincible = true;
+        immunity_timer_.restart();
         asteroid->set_is_on_screen(false);
     }
 }
 
-bool MainObject::processing_if_got_present(Present* present)
+//bool MainObject::processing_if_got_present(Present* present)
+//{
+//    if (check_collision_2_rect(get_rect(), present->get_rect()) && present->get_is_on_screen() && health_ > 0)
+//    {
+//        getting_present_sound_.play();
+//        ammo_level_++;
+//        present->set_is_on_screen(false);
+//        return true;
+//    }
+//    return false;
+//}
+void MainObject::processing_if_got_present(Present* present)
 {
-    if (check_collision_2_rect(get_rect(), present->get_rect()) && present->get_is_on_screen() && health_ > 0)
-    {
-        getting_present_sound_.play();
-        ammo_level_++;
-        present->set_is_on_screen(false);
-        return true;
-    }
-    return false;
-}
+    // Check for invalid present or dead player
+    if (!present || health_ <= 0) return;
 
+    // Create player rectangle (centered, assuming x, y are the sprite's center)
+    sf::FloatRect player_rect(x - width_of_sprite_ / 2.0f, y - height_of_sprite_ / 2.0f, width_of_sprite_, height_of_sprite_);
+
+    // Check collision and if present is on screen
+    if (present->get_is_on_screen() && check_collision_2_rect(present->get_rect(), player_rect))
+    {
+        // Play sound if valid
+        if (getting_present_sound_.getStatus() != sf::Sound::Playing)
+        {
+            getting_present_sound_.play();
+        }
+
+        // Mark present as collected
+        present->set_is_on_screen(false);
+
+        // Handle effects based on present type
+        switch (present->get_kind())
+        {
+        case ATOMIC_POWER:
+            if (shots_ < 3) shots_++;
+        case LIFE:
+            if (health_ < 10)
+            {
+                health_++;
+            }
+            break;
+        case NEUTRON:
+            ammo_type_ = 1;
+            if (ammo_level_ < 3) ammo_level_++;
+            
+            break;
+        case BORON:
+            ammo_type_ = 2;
+            if (ammo_level_ < 3) ammo_level_++;
+            break;
+        case ARROW:
+            ammo_type_ = 3;
+            if (ammo_level_ < 3) ammo_level_++;
+            break;
+        case SHIELD:
+            invincible = true;
+            immunity_timer_.restart();
+            break;
+        default:
+            std::cerr << "Warning: Unknown present type " << present->get_kind() << std::endl;
+            break;
+        }
+    }
+}
 void MainObject::slowly_move_from_bottom()
 {
     if (y < SCREEN_HEIGHT - height_of_sprite_ / 2)

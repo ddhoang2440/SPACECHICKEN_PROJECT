@@ -56,18 +56,19 @@ void AmmoObject::update()
         alive_ = false;
 }
 
-void AmmoObject::load_static_ammo_picture(const std::string& file_path)
+bool AmmoObject::load_static_ammo_picture(const std::string& file_path)
 {
     if (!texture_.loadFromFile(file_path))
     {
         std::cout << "Unable to load image " << file_path << std::endl;
-        return;
+        return false;
     }
     width_ = texture_.getSize().x;
     height_ = texture_.getSize().y;
     radius_ = width_ / 2;
     anim_ = Animation(texture_, 0, 0, width_, height_, 1, 0.0f);
     anim_.sprite_.setPosition(x, y);
+    return true;
 }
 
 void AmmoObject::set_rect_cordinate(float x, float y)
@@ -138,7 +139,7 @@ BlaserAmmo::BlaserAmmo()
     width_ = BLASER_WIDTH;
     height_ = BLASER_HEIGHT;
     radius_ = width_ / 2;
-    if (!texture_.loadFromFile("res/image/blaser.png"))
+    if (!texture_.loadFromFile("res/image/NEUTRON0.png"))
         std::cout << "Failed to load texture: res/image/blaser.png" << std::endl;
     anim_ = Animation(texture_, 0, 0, width_, height_, 1, 0.0f);
     anim_.sprite_.setPosition(x, y);
@@ -160,8 +161,8 @@ BoronAmmo::BoronAmmo()
     width_ = BORON_WIDTH;
     height_ = BORON_HEIGHT;
     radius_ = width_ / 2;
-    if (!texture_.loadFromFile("res/image/boron.png"))
-        std::cout << "Failed to load texture: res/image/boron.png" << std::endl;
+    if (!texture_.loadFromFile("res/image/BORON0.png"))
+        std::cout << "Failed to load texture: res/image/BORON0.png" << std::endl;
     anim_ = Animation(texture_, 0, 0, width_, height_, 1, 0.0f);
     anim_.sprite_.setPosition(x, y);
     start_time_ = sf::Clock().getElapsedTime();
@@ -182,7 +183,7 @@ NeuronAmmo::NeuronAmmo()
     width_ = NEURON_WIDTH;
     height_ = NEURON_HEIGHT;
     radius_ = width_ / 2;
-    if (!texture_.loadFromFile("res/image/neuron.png"))
+    if (!texture_.loadFromFile("res/image/NEUTRON0.png"))
         std::cout << "Failed to load texture: res/image/neuron.png" << std::endl;
     anim_ = Animation(texture_, 0, 0, width_, height_, 1, 0.0f);
     anim_.sprite_.setPosition(x, y);

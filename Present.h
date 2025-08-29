@@ -13,15 +13,19 @@ protected:
     bool is_on_screen_;
 
 public:
-    Present();
-    Present(BonusType kind);
+	Present(float x, float y);
+    Present(BonusType kind,float x, float y);
     ~Present();
 
-    void set_rect_cordinate(const float& x, const float& y);
+
+    void set_rect_cordinate( float x,  float y);
     sf::FloatRect get_rect() const override;
 
     void set_is_on_screen(bool is_on_screen) { is_on_screen_ = is_on_screen; }
     bool get_is_on_screen() const { return is_on_screen_; }
+
+	float get_x() const { return x; }
+	float get_y() const { return y; }
 
     void set_kind_of_present(BonusType kind_of_present) {
         kind_of_present_ = kind_of_present;
@@ -30,10 +34,10 @@ public:
     BonusType get_kind_of_present() const { return kind_of_present_; }
 
     void render(sf::RenderWindow& window);
-    void draw(sf::RenderWindow& window) override;
-    void update() override;
+    void update(float dt);
+	BonusType get_kind() const;
 
 private:
-    void load_texture();
+    bool load_texture();
 };
 #endif

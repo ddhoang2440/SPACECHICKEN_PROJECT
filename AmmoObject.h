@@ -3,7 +3,13 @@
 #include "CommonVariable.h"
 #include "Entity.h"
 #include <SFML/Graphics.hpp>
-
+enum class AmmoType
+{
+    ARROW = 1,
+    BLASER = 2,
+    BORON = 3,
+    NEURON = 4
+};
 class AmmoObject : public Entity
 {
 protected:
@@ -18,13 +24,7 @@ protected:
     sf::Time start_time_; // Time when ammo is created
 
 public:
-    enum AmmoType
-    {
-        ARROW = 1,
-        BLASER = 2,
-        BORON = 3,
-        NEURON = 4
-    };
+    
     AmmoType type_;
 
     AmmoObject();
@@ -36,7 +36,7 @@ public:
 	virtual void draw(sf::RenderWindow& window) override;
     virtual void update() override;
 
-    void load_static_ammo_picture(const std::string& file_path);
+    bool load_static_ammo_picture(const std::string& file_path);
 
     int get_speed() const { return speed_; }
     void set_speed(int speed) { speed_ = speed; }
@@ -45,6 +45,9 @@ public:
     void set_rect_cordinate(float x, float y);
     void set_rect_cordinate_width_height(float x, float y, int w, int h);
     void set_rect_width_height(float w, float h);
+	void set_rotation(float angle) { direction_ = angle; anim_.sprite_.setRotation(angle); }
+	float get_rotation() const { return anim_.sprite_.getRotation(); }
+	sf::Sprite get_sprite() const { return anim_.sprite_; }
 
     bool is_alive() const { return alive_; }
     void set_alive(bool alive) { alive_ = alive; }
