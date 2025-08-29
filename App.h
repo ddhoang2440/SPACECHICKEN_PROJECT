@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 #include <vector>
@@ -16,9 +16,7 @@
 #include "Explosion.h"
 #include "Present.h"
 #include "BackGround.h"
-
 #define M_PI 3.14159265358979323846
-
 class App {
 private:
     // Window and UI
@@ -60,7 +58,6 @@ private:
     void render();
     void initGame();
     void initPlayer();
-    void initChickenLevel1();
     void initAsteroid();
     void initBoss();
     void playMusicLevel(int level);
@@ -68,14 +65,13 @@ private:
     bool allLevel2AsteroidDead();
     bool allBossDead();
     void processChickenVsPlayer(float dt);
-
     void init();
-
     void processAsteroidVsPlayer(float dt);
-    void processBossVsPlayer(float dt);
+    //void processBossVsPlayer(float dt);
     void introBeforeLevel(float dt);
     void cleanUpExplosions();
     void cleanUpChickens();
+    void add_present(Present* present);
 
     // Test methods (commented if not used)
     // bool allEnemiesDead();
@@ -84,8 +80,8 @@ private:
     void spawn_wave1();
     void spawn_wave2();
 
-
 public:
     App();
+    ~App();
     void run();
 };

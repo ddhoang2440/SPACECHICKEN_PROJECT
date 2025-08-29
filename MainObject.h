@@ -39,10 +39,13 @@ protected:
     bool slow_move_;
     sf::Time slow_move_timer_;
     bool got_hit_;
-    int ammo_type_; // 0: normal, 1: advanced, etc.
-    float invincible_time_;        // thời gian bất tử còn lại
+    int ammo_type_;
+    int shots_;
+    bool invincible;        // thời gian bất tử còn lại
     const float INVINCIBLE_DURATION = 1.0f; // 1 giây miễn thương
     sf::Clock collisionClock_;
+    sf::Clock shoot_timer_;
+    sf::Clock immunity_timer_;
     bool isColliding_;
 public:
     MainObject();
@@ -52,7 +55,7 @@ public:
     void set_clips();
     sf::FloatRect get_rect() const override;
     void render_animation(sf::RenderWindow& window, const double& scale);
-    void update() override;
+    void update(float dt);
     void handling_movement(sf::Event& event);
     void handling_shooting(sf::Event& event);
     void render_shooting(sf::RenderWindow& window);
@@ -65,7 +68,7 @@ public:
     void processing_if_hit_by_boss(Boss* boss);
     void process_shooting_if_hit_asteroid(Asteroid* asteroid);
     void process_if_hit_by_asteroid(Asteroid* asteroid);
-    bool processing_if_got_present(Present* present);
+    void processing_if_got_present(Present* present);
     void slowly_move_from_bottom();
     void set_slow_move();
     void free();
