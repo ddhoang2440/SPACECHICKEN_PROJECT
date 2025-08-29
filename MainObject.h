@@ -98,5 +98,6 @@ public:
     void stop_pull() { being_pulled_ = false; pull_to_center_ = false; }
     void start_pull_to_center();
     bool is_pulling_to_center() const { return pull_to_center_; }
+    std::vector<AmmoObject*>& get_ammo_list() { return ammo_list; }
 };
 #endif

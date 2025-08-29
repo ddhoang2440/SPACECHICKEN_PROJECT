@@ -102,8 +102,8 @@ public:
 
     void handle_shooting_eggs_downward(float dt);
     void handle_shooting_eggs_toward_player(MainObject* main_object,float dt);
-    void shooting_eggs_toward_player();
-    void update_the_eggs();
+    //void shooting_eggs_toward_player();
+    void update_the_eggs(float dt);
     void render_the_eggs(sf::RenderWindow& window);
     Present* generate_present();
     void moving_back_and_forth();
