@@ -1,4 +1,4 @@
-﻿#ifndef CHICKEN_H
+#ifndef CHICKEN_H
 #define CHICKEN_H
 #include "CommonVariable.h"
 #include "Entity.h"
@@ -34,6 +34,7 @@ class MainObject; // Forward declaration
 
 class Chicken : public Entity {
 protected:
+    static const int CHICKEN_NUMS_FRAME = 18;
     static const sf::Time CHICKEN_spritetime;
     static int CHICKEN_spriteIndex;
 
@@ -45,7 +46,6 @@ protected:
     sf::Sound chicken_laying_eggs_sound_;
     sf::SoundBuffer eggs_get_destroyed_buffer_;
     sf::Sound eggs_get_destroyed_sound_;
-
     std::vector<std::unique_ptr<Egg>> eggs_list_;
     unique_ptr<Present> present_;
     bool is_on_screen_;
@@ -65,8 +65,8 @@ protected:
     float y_direction_;
     double angle_;
     double angle_increment_;
-	float radius_;
-	float angle_speed_;
+    float radius_;
+    float angle_speed_;
     double scale_;
     double direction_;
     int damage_;
@@ -87,11 +87,12 @@ protected:
     std::mt19937 rng_; // Random number generator
     std::uniform_int_distribution<int> dist_100_; // 0-100
     std::uniform_int_distribution<int> dist_6_; // 0-5
-
 public:
     Chicken();
     ~Chicken();
 
+    void set_clips();
+    void load_animation_sprite(const std::string& file);
     void set_rect_cordinate(const float& x, const float& y);
     void set_rect_cordinate_width_and_height(const float& x, const float& y, const float& width, const float& height);
     void set_rect_width_and_height(const float& width, const float& height);
@@ -113,13 +114,13 @@ public:
         radius_ = radius;
         angle_speed_ = speed;
 	}
-	void set_angle_increment_(float inc) { angle_increment_ = inc; }
+	  void set_angle_increment_(float inc) { angle_increment_ = inc; }
     void set_speed(const int& speed) { speed_ = speed; }
     void set_y_direction(int y) { y_direction_ = y; }
     void set_present(std::unique_ptr<Present> p) { present_ = std::move(p); has_present_ = !!p; }
-	void set_has_present(bool has) { has_present_ = has; if (!has) present_.reset(); }
+	  void set_has_present(bool has) { has_present_ = has; if (!has) present_.reset(); }
     Present* get_present() const { return has_present_ ? present_.get() : nullptr; }
-	ShootingMode get_shooting_mode() const { return shooting_mode_; }
+	  ShootingMode get_shooting_mode() const { return shooting_mode_; }
     bool get_has_a_present() const { return has_present_; }
     bool get_has_a_wing() const { return has_wing_; }
     bool get_alive() const { return health_ > 0 && is_on_screen_; }
@@ -132,12 +133,12 @@ public:
         max_y_ = max_y;
         /*   center_x_ = center_x;
            center_y_ = center_y;*/
+
     }
     void set_circle_properties(float center_x, float center_y) {
         center_x_ = center_x;
         center_y_ = center_y;
     }
-
 	void set_radius(float r) { radius_ = r; }
     int get_damage() const { return damage_; }
 	sf::FloatRect get_wing_rect() const { return wing_rect_; }

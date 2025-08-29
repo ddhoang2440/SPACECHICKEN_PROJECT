@@ -1,3 +1,10 @@
+// CustomCursor.cpp
+#include "CustomCursor.h"
+#include <iostream>
+
+CustomCursor::CustomCursor() : visible(true) {
+    sprite.setScale(0.1f, 0.1f);
+
 ﻿#include "CustomCursor.h"
 #include <iostream>
 
@@ -12,17 +19,31 @@ bool CustomCursor::loadFromFile(const std::string& path) {
     }
     sprite.setTexture(texture);
 
-    sprite.setScale(0.08f, 0.08f); // Giảm kích thước còn 8%
-    sprite.setColor(sf::Color(0, 255, 255)); // Xanh cyan
+
+    sprite.setScale(0.08f, 0.08f);
+    sprite.setColor(sf::Color::White);
     sprite.setOrigin(texture.getSize().x / 2.f, texture.getSize().y / 2.f);
     return true;
 }
 
 void CustomCursor::update(const sf::RenderWindow& window) {
+
+    if (!visible) return; // nếu ẩn thì không cập nhật
+
     sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
     sprite.setPosition(mousePos);
 }
 
 void CustomCursor::draw(sf::RenderWindow& window) const {
-    window.draw(sprite);
+if (visible) {
+        window.draw(sprite);
+    }
+}
+
+void CustomCursor::setVisible(bool v) {
+    visible = v;
+}
+
+bool CustomCursor::isVisible() const {
+    return visible;
 }
