@@ -1,4 +1,5 @@
-﻿#pragma once
+﻿#ifndef MAIN_OBJECT_H
+#define MAIN_OBJECT_H
 #include "CommonVariable.h"
 #include "Entity.h"
 #include "Animation.h"
@@ -17,9 +18,6 @@ class Boss;
 class MainObject : public Entity
 {
 protected:
-    float x_;
-    float y_;
-    sf::FloatRect rect_;
     sf::Texture texture_;
     sf::SoundBuffer shoot_sound_buffer_;
     sf::Sound shoot_sound_;
@@ -41,22 +39,23 @@ protected:
     bool slow_move_;
     sf::Time slow_move_timer_;
     bool got_hit_;
-    int ammo_type_; // 0: normal, 1: advanced, etc.
-    float invincible_time_;        // thời gian bất tử còn lại
-    const float INVINCIBLE_DURATION = 2.0f; // 1 giây miễn thương
+    int ammo_type_;
+    int shots_;
+    bool invincible;        // thời gian bất tử còn lại
+    const float INVINCIBLE_DURATION = 1.0f; // 1 giây miễn thương
     sf::Clock collisionClock_;
+    sf::Clock shoot_timer_;
+    sf::Clock immunity_timer_;
     bool isColliding_;
-    float shield_timer_ = 0.f; // thời gian còn lại của khiên
 public:
     MainObject();
     ~MainObject();
 
- 
     void load_animation_sprite(const std::string& file);
     void set_clips();
     sf::FloatRect get_rect() const override;
     void render_animation(sf::RenderWindow& window, const double& scale);
-    void update() override;
+    void update(float dt);
     void handling_movement(sf::Event& event);
     void handling_shooting(sf::Event& event);
     void render_shooting(sf::RenderWindow& window);
@@ -69,18 +68,16 @@ public:
     void processing_if_hit_by_boss(Boss* boss);
     void process_shooting_if_hit_asteroid(Asteroid* asteroid);
     void process_if_hit_by_asteroid(Asteroid* asteroid);
-    bool processing_if_got_present(Present* present);
+    void processing_if_got_present(Present* present);
     void slowly_move_from_bottom();
     void set_slow_move();
     void free();
-	float get_x() const { return x; }
-	float get_y() const { return y; }
-    void set_position(float x, float y);
+
     void set_rect_cordinate(const float& x, const float& y);
     void set_rect_cordinate_width_and_height(const float& x, const float& y, const float& width, const float& height);
     void set_rect_width_and_height(const float& width, const float& height);
     sf::FloatRect get_rect_width_height_with_scale(const double& scale) const;
-    void start_pull_to_center();
+
     bool get_is_win() const { return is_win_; }
     void set_is_win(bool win) { is_win_ = win; }
     int get_health() const { return health_; }
@@ -99,6 +96,8 @@ public:
     float pull_speed_ = 100.f; // Tốc độ kéo
     sf::Vector2f target_pos_;
     void stop_pull() { being_pulled_ = false; pull_to_center_ = false; }
+    void start_pull_to_center();
     bool is_pulling_to_center() const { return pull_to_center_; }
     std::vector<AmmoObject*>& get_ammo_list() { return ammo_list; }
 };
+#endif
