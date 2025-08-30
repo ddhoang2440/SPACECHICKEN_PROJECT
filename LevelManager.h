@@ -20,8 +20,9 @@ public:
     void render(sf::RenderWindow& window);
 
     // --------------------- Spawning -----------------------
-    void spawn_wave1();
-    void spawn_wave2(MainObject& player); // Asteroid round
+    void spawn_round1_wave1();
+    void spawn_round1_wave2(MainObject& Player);
+    void spawn_round2(MainObject& player); // Asteroid round
 
     void spawn_round3_wave1(); // Boss round
     void spawn_round3_wave2(MainObject& player); // Boss round
@@ -39,7 +40,7 @@ public:
     void cleanUpWave();
     // --------------------- Getters -----------------------
     int getScore() const { return score; }
-    int getCurrentWave() const { return current_wave_; }
+    int getCurrentLevel() const { return current_level_; }
     bool getRound2Active() const { return round2Active; }
     float getAsteroidRoundTime() const { return asteroidRoundTime; }
     void add_present(Present* present) {
@@ -49,12 +50,14 @@ public:
         }
 	}
 private:
-    int current_wave_;
+    int current_level_;
     int score;
     int chickenKillCount;
     bool isPaused;
-    // Spawn present 
-    sf::RenderWindow window;
+
+	bool round1_wave2_spawned;
+	// Spawn present 
+    sf::RenderWindow* window;
     float presentSpawnTimer = 0.f;
     const float presentSpawnInterval = 5.f;
     vector<unique_ptr<Present>> Presents;
@@ -78,3 +81,4 @@ private:
 };
 
 #endif
+
