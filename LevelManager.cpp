@@ -5,9 +5,9 @@
 #include <ctime>
 
 LevelManager::LevelManager()
-    : current_wave_(1), score(0), chickenKillCount(0),
-    isPaused(false), asteroidRoundTime(45.f), asteroidRoundElapsed(0.f),
-    round2Active(false), presentSpawnTimer(0.f), presentSpawnInterval(2.f)
+    : current_level_(1), score(0), chickenKillCount(0),
+    isPaused(false), asteroidRoundTime(27.f), asteroidRoundElapsed(0.f),
+	round2Active(false), presentSpawnTimer(0.f), presentSpawnInterval(2.f), wave1_part2_spawned(false)
 {
     srand(static_cast<unsigned int>(time(nullptr)));
 }
@@ -33,65 +33,79 @@ void LevelManager::spawnRandomPresent() {
 
 // --------------------- Round 1: Chicken -----------------------
 void LevelManager::processChickenVsPlayer(float dt, MainObject& player, sf::RenderWindow& window) {
-    //bool hitThisFrame = false;
-
-    for (auto& chicken : chickens) {
-        if (isPaused || !chicken->get_is_on_screen() || chicken->get_health() <= 0)
-            continue;
-
-        switch (chicken->get_movement_pattern()) {
-        case MovementPattern::CIRCLE:   chicken->moving_like_a_circle(); break;
-        case MovementPattern::DIAGONAL: chicken->moving_diagonally(); break;
-        case MovementPattern::PARABOLA: chicken->moving_parabola(); break;
-        case MovementPattern::UP_DOWN:  chicken->moving_up_and_down(); break;
-        default:                        chicken->moving_back_and_forth(); break;
-        }
-
-        chicken->render_the_eggs(window);
-        if (chicken->get_shooting_mode() == ShootingMode::DOWNWARD)
-            chicken->handle_shooting_eggs_downward(dt);
-        else
-            chicken->handle_shooting_eggs_toward_player(&player, dt);
-    }
-
-    // Va chạm đạn với gà
+    // 1. Xử lý va chạm đạn của người chơi với gà
     for (auto* ammo : player.get_ammo_list()) {
         if (!ammo->is_alive()) continue;
 
         for (auto& chicken : chickens) {
-            if (!chicken->get_is_on_screen() || chicken->get_health() <= 0) continue;
-
-            player.process_shooting_if_hit_chicken(chicken.get());
-            if (!ammo->is_alive()) break;
+            if (chicken->get_is_on_screen() && chicken->get_health() > 0) {
+                player.process_shooting_if_hit_chicken(chicken.get());
+                if (!ammo->is_alive()) break; // Đạn đã trúng, thoát vòng lặp gà
+            }
         }
     }
 
-    // Kiểm tra gà chết, explosion, điểm
-    for (auto& chicken : chickens) {
-        if (!chicken->get_is_on_screen() || chicken->get_health() > 0) continue;
+    // 2. Cập nhật, xử lý va chạm, và dọn dẹp gà
+    bool all_chickens_are_dead = true;
+    for (auto it = chickens.begin(); it != chickens.end(); ) {
+        auto& chicken = *it;
 
-        chickenKillCount++;
-        score += 10;
+        if (chicken->get_health() > 0) {
+            all_chickens_are_dead = false;
 
-        auto exp = std::make_unique<Explosion>();
-        exp->load_animation_sprite("res/image/explosion.png");
-        exp->set_clips();
-        exp->set_coordinates(chicken->x, chicken->y);
-        exp->set_is_on_screen(true);
-        explosions.push_back(std::move(exp));
+            if (isPaused || !chicken->get_is_on_screen()) {
+                ++it;
+                continue;
+            }
 
-        chicken->set_is_on_screen(false);
-    }
+            // --- Di chuyển theo pattern ---
+            switch (chicken->get_movement_pattern()) {
+            case MovementPattern::CIRCLE:   chicken->moving_like_a_circle(); break;
+            case MovementPattern::DIAGONAL: chicken->moving_diagonally(); break;
+            case MovementPattern::PARABOLA: chicken->moving_parabola(); break;
+            case MovementPattern::UP_DOWN:  chicken->moving_up_and_down(); break;
+            default:                        chicken->moving_back_and_forth(); break;
+            }
 
-    // Gà tấn công player
-    for (auto& chicken : chickens) {
-        if (chicken->get_is_on_screen() && chicken->get_health() > 0 && player.get_health() > 0) {
-            player.process_if_hit_by_chicken(chicken.get());
-            player.process_if_hit_by_eggs(chicken.get());
+            // --- Bắn trứng ---
+            if (chicken->get_shooting_mode() == ShootingMode::DOWNWARD) {
+                chicken->handle_shooting_eggs_downward(dt);
+            }
+            else if (chicken->get_shooting_mode() == ShootingMode::TOWARD_PLAYER) {
+                chicken->handle_shooting_eggs_toward_player(&player, dt);
+            }
+
+            // --- Update eggs & present ---
+            chicken->update(dt);
+
+            // --- Xử lý va chạm player ---
+            if (player.get_health() > 0) {
+                player.process_if_hit_by_chicken(chicken.get());
+                player.process_if_hit_by_eggs(chicken.get());
+            }
+
+            ++it;
+        }
+        else {
+            // Gà chết: explosion + wing
+            if (chicken->get_is_on_screen()) {
+                chickenKillCount++;
+                score += 10;
+
+                auto exp = std::make_unique<Explosion>();
+                exp->load_animation_sprite("res/image/explosion.png");
+                exp->set_clips();
+                exp->set_coordinates(chicken->x, chicken->y);
+                exp->set_is_on_screen(true);
+                explosions.push_back(std::move(exp));
+
+                chicken->set_is_on_screen(false); // đánh dấu đã xử lý
+            }
+            ++it;
         }
     }
 
-    // Update presents
+    // 3. Cập nhật vật phẩm rơi
     for (auto it = presents.begin(); it != presents.end(); ) {
         Present* present = it->get();
         if (present->get_is_on_screen()) {
@@ -99,29 +113,30 @@ void LevelManager::processChickenVsPlayer(float dt, MainObject& player, sf::Rend
             player.processing_if_got_present(present);
         }
 
-        if (!present->get_is_on_screen())
+        if (!present->get_is_on_screen()) {
             it = presents.erase(it);
-        else
+        }
+        else {
             ++it;
-    }
-
-    // Nếu tất cả gà chết → chuyển wave2
-    bool all_dead = true;
-    for (auto& chicken : chickens) {
-        if (chicken->get_health() > 0 && chicken->get_is_on_screen()) {
-            all_dead = false;
-            break;
         }
     }
 
-    if (all_dead && current_wave_ == 1) {
-        cleanUpWave();
-        spawn_wave2(player);
+    // 4. Kiểm tra chuyển wave
+    if (all_chickens_are_dead && current_level_ == 1) {
+        if (!wave1_part2_spawned) {
+            wave1_part2_spawned = true;
+            cleanUpWave();
+            spawn_wave1_round2(player);
+        }
+        else {
+            cleanUpWave();
+            spawn_wave2(player);
+        }
     }
 }
 
+
 // --------------------- Round 2: Asteroid -----------------------
-// --------------------- Spawn Asteroids -----------------------
 void LevelManager::spawnAsteroids(int num) {
     const int maxAsteroidsOnScreen = 8;
     if (asteroids.size() + num > maxAsteroidsOnScreen) {
@@ -268,12 +283,19 @@ void LevelManager::processBossVsPlayer(float dt, MainObject& player, sf::RenderW
 
 // --------------------- Render tất cả -----------------------
 void LevelManager::render(sf::RenderWindow& window) {
-    for (auto& c : chickens)    if (c->get_is_on_screen()) c->draw(window);
+    for (auto& c : chickens) {
+        if (c->get_is_on_screen()) {
+            c->draw(window);
+            c->render_the_eggs(window);   //  thêm dòng này để vẽ trứng
+        }
+    }
+
     for (auto& a : asteroids)  if (a->get_is_on_screen()) a->draw(window);
     for (auto& b : bosses)     if (b->get_is_on_screen()) b->draw(window);
     for (auto& p : presents)   if (p->get_is_on_screen()) p->draw(window);
     for (auto& e : explosions) if (e->get_is_on_screen()) e->draw(window);
 }
+
 
 // --------------------- Update chung -----------------------
 void LevelManager::update(float dt, MainObject& player, sf::RenderWindow& window) {
@@ -286,9 +308,9 @@ void LevelManager::update(float dt, MainObject& player, sf::RenderWindow& window
         spawnRandomPresent();
     }
 
-    if (current_wave_ == 1) processChickenVsPlayer(dt, player, window);
-    if (current_wave_ == 2) updateRound2(dt, player);
-    if (current_wave_ == 3) processBossVsPlayer(dt, player, window);
+    if (current_level_ == 1) processChickenVsPlayer(dt, player, window);
+    if (current_level_ == 2) updateRound2(dt, player);
+    if (current_level_ == 3) processBossVsPlayer(dt, player, window);
 
     for (auto it = explosions.begin(); it != explosions.end(); ) {
         auto& e = *it;
@@ -299,8 +321,8 @@ void LevelManager::update(float dt, MainObject& player, sf::RenderWindow& window
 }
 
 // --------------------- Wave spawn -----------------------
-void LevelManager::spawn_wave1() {
-    current_wave_ = 1;
+void LevelManager::spawn_wave1_round1() {
+    current_level_ = 1;
     chickens.clear();
 
     int rows = 3;
@@ -314,31 +336,96 @@ void LevelManager::spawn_wave1() {
     for (int row = 0; row < rows; ++row) {
         for (int col = 0; col < cols; ++col) {
             auto chicken = std::make_unique<Chicken>();
+
+            // --- Vị trí ban đầu ---
             float init_x = spacing_x * (col + 1);
             float init_y = start_y + spacing_y * row;
-
             chicken->set_rect_cordinate(init_x, init_y);
+
+            // --- Sprite ---
             chicken->load_animation_sprite("res/image/chicken123.png");
             chicken->set_clips();
             chicken->set_rect_width_and_height(frameWidth, frameHeight);
+
+            // --- Thông số gà ---
             chicken->set_is_on_screen(true);
             chicken->set_health(3);
             chicken->set_speed(2.f);
-            chicken->set_y_direction(1.f);
-            chicken->set_y_bounds(init_y - 50.f, init_y + 50.f);
+
+            // --- Nhấp nhô theo trục y ---
+            chicken->set_y_direction(1.f);  // bắt đầu nhấp nhô xuống
+            chicken->set_y_bounds(init_y - 50.f, init_y + 50.f); // phạm vi nhấp nhô
             chicken->set_movement_pattern(MovementPattern::UP_DOWN);
+
+            // --- Bắn trứng xuống ---
             chicken->set_shooting_mode(ShootingMode::DOWNWARD);
+            chicken->set_shoot_interval(1.f); // bắn 1 trứng / 1 giây (có thể điều chỉnh)
+            chicken->set_shoot_timer(0.f);
 
             chickens.push_back(std::move(chicken));
         }
     }
 
-    std::cout << "Spawned wave 1: " << chickens.size() << " chickens" << std::endl;
+    std::cout << "Spawned wave 1 part 1: " << chickens.size()
+        << " chickens moving up/down and shooting downward." << std::endl;
+}
+
+
+void LevelManager::spawn_wave1_round2(MainObject& player) {
+    current_level_ = 1;
+    chickens.clear();
+
+    // --- Đặt player cố định giữa màn hình ---
+    player.start_pull_to_center();
+
+    int num_chickens = 8;        // số gà
+    float base_radius = 250.f;   // bán kính trung bình lớn
+    float min_radius = 200.f;    // bán kính nhỏ nhất
+    float max_radius = 280.f;    // bán kính lớn nhất
+    float radius_speed = 0.5f;   // tốc độ nhấp nhô
+    float angle_increment = 1.5f; // tốc độ quay mỗi frame (độ)
+	float centerX = SCREEN_WIDTH / 2.f;
+	float centerY = SCREEN_HEIGHT / 2.f;
+    for (int i = 0; i < num_chickens; ++i) {
+        auto chicken = std::make_unique<Chicken>();
+
+        // --- Thiết lập vòng tròn ---
+        chicken->set_radius(base_radius);
+        chicken->set_min_radius(min_radius);
+        chicken->set_max_radius(max_radius);
+        chicken->set_radius_speed(radius_speed);
+
+        chicken->set_angle(i * (360.f / num_chickens));
+        chicken->set_angle_increment_(angle_increment);
+        chicken->set_circle_properties(centerX, centerY); // center cố định
+
+        // Vị trí ban đầu
+        chicken->set_rect_cordinate(
+            centerX + base_radius * std::cos(chicken->get_angle() * M_PI / 180),
+            centerY + base_radius * std::sin(chicken->get_angle() * M_PI / 180)
+        );
+
+        // --- Setup sprite ---
+        chicken->load_animation_sprite("res/image/chicken123.png");
+        chicken->set_clips();
+        chicken->set_rect_width_and_height(75.f, 68.f);
+
+        // --- Thông số cơ bản ---
+        chicken->set_is_on_screen(true);
+        chicken->set_health(3);
+        chicken->set_movement_pattern(MovementPattern::CIRCLE);
+        chicken->set_shooting_mode(ShootingMode::TOWARD_PLAYER); // bắn về player
+
+        chickens.push_back(std::move(chicken));
+    }
+
+    std::cout << "Spawned wave 1 part 2: " << chickens.size()
+        << " chickens orbiting player with large radius and gentle hover." << std::endl;
 }
 
 // --------------------- Wave 2: Asteroid -----------------------
 void LevelManager::spawn_wave2(MainObject& player) {
-    current_wave_ = 2;
+    current_level_ = 2;
     round2Active = true;
     asteroidRoundElapsed = 0.f;
     asteroids.clear();
@@ -351,7 +438,7 @@ void LevelManager::spawn_wave2(MainObject& player) {
 
  //--------------------- Wave 3: Boss -----------------------
 void LevelManager::spawn_wave3(MainObject& player) {
-    current_wave_ = 3;
+    current_level_ = 3;
     bosses.clear();
 
     auto boss = std::make_unique<Boss>();
@@ -377,7 +464,7 @@ void LevelManager::reset() {
     presents.clear();
     explosions.clear();
 
-    current_wave_ = 1;
+    current_level_ = 1;
     isPaused = false;
     score = 0;
     chickenKillCount = 0;
