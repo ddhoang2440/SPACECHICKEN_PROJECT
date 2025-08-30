@@ -805,7 +805,7 @@ App::App()
     isPaused(false),
     score(0), lives(3), currentLevel(1)
 {
-    window.setFramerateLimit(60);
+    window.setFramerateLimit(60);    
     window.setMouseCursorVisible(false);
     cursor.loadFromFile("assets/cursor/crosshair.png");
 
@@ -848,6 +848,7 @@ void App::processEvents() {
                         break;
                     case 1: // Settings
                         gameState = GameState::SETTINGS;
+
                         settingsMenu.show();
                         break;
                     case 2: // High Scores
@@ -855,7 +856,6 @@ void App::processEvents() {
                         break;
                     case 3: // Help
                         gameState = GameState::HELP;
-
                     case 4: // Quit
                         window.close();
                         break;
@@ -914,6 +914,45 @@ void App::processEvents() {
                 settingsMenu.hide();
                 gameState = GameState::MENU;
             }
+            break;
+
+        case GameState::PLAYING:
+            // Pause
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P) {
+                gameState = GameState::PAUSED;
+                pauseMenu.show();
+            }
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                if (ui.getPauseButton().getGlobalBounds().contains(mousePos)) {
+                    gameState = GameState::PAUSED;
+                    pauseMenu.show();
+                }
+            }
+            if (!isPaused && player.get_health() > 0) {
+                player.handling_movement(event);
+                player.handling_shooting(event);
+            }
+            break;
+
+        case GameState::HIGH_SCORES:
+            // TODO: xử lý sự kiện high scores
+            break;
+
+        case GameState::HELP:
+            // TODO: xử lý sự kiện help screen
+            break;
+
+        case GameState::GAMEOVER:
+            // Nhấn Enter để chơi lại
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
+                gameState = GameState::PLAYING;
+                score = 0; lives = 3;
+                levelManager.reset();
+            }
+
+            // Nhấn Esc để thoát
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
+                window.close();
             break;
 
         case GameState::PLAYING:
@@ -1014,6 +1053,7 @@ void App::update(float dt) {
             lives--;                // giảm mạng
             if (lives > 0) {
                 player.set_health(3);               // reset máu
+
                 player.set_rect_cordinate(SCREEN_WIDTH / 2.f, SCREEN_HEIGHT - 100.f); // reset vị trí
             }
             else {
@@ -1110,12 +1150,12 @@ void App::initGame() {
     player.set_health(3);
     score = 0;
     lives = 3;
-
     player.set_rect_cordinate(SCREEN_WIDTH / 2.f, SCREEN_HEIGHT - 100.f);
+    //levelManager.spawn_round3_wave1();
+    player.set_position(SCREEN_WIDTH / 2.f, SCREEN_HEIGHT - 100.f);
 
     // Spawn wave đầu tiên
-    //levelManager.spawn_wave1();
-    levelManager.spawn_round3_wave1();
+    levelManager.spawn_wave1();
     gameState = GameState::PLAYING;
 }
 
@@ -1128,3 +1168,4 @@ void App::initPlayer() {
     player.set_ammo_level(0);
     window.setMouseCursorVisible(false);
 }
+

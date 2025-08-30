@@ -22,12 +22,12 @@ public:
     // --------------------- Spawning -----------------------
     void spawn_wave1();
     void spawn_wave2(MainObject& player); // Asteroid round
+
     void spawn_round3_wave1(); // Boss round
     void spawn_round3_wave2(MainObject& player); // Boss round
     void spawnAsteroids(int num);
     void updateRound2(float dt, MainObject& player);
     void updateRound3(float dt, MainObject& player);
-
     // --------------------- Processing -----------------------
     void processChickenVsPlayer(float dt, MainObject& player, sf::RenderWindow& window);
     void processAsteroidVsPlayer(float dt, MainObject& player);
@@ -48,7 +48,6 @@ public:
             presents.push_back(std::unique_ptr<Present>(present));
         }
 	}
-
 private:
     int current_wave_;
     int score;
@@ -59,15 +58,14 @@ private:
     float presentSpawnTimer = 0.f;
     const float presentSpawnInterval = 5.f;
     vector<unique_ptr<Present>> Presents;
-  /*  void spawnRandomPresent();*/
-
+    void spawnRandomPresent();
     // Round 1: chickens
     std::vector<std::unique_ptr<Chicken>> chickens;
 
     // Round 2: asteroids
     std::vector<std::unique_ptr<Asteroid>> asteroids;
     bool round2Active;
-	bool round3Active;
+	  bool round3Active;
     float asteroidRoundTime;     // Duration of round 2 in seconds
     float asteroidRoundElapsed;  // Time elapsed since round 2 started
 

@@ -2,7 +2,9 @@
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
+
 #include <random>
+
 #include <ctime>
 
 LevelManager::LevelManager()
@@ -13,24 +15,23 @@ LevelManager::LevelManager()
     srand(static_cast<unsigned int>(time(nullptr)));
 }
 
+void LevelManager::spawnRandomPresent() {
 
-//void LevelManager::spawnRandomPresent() {
-//
-//    static std::mt19937 rng(std::random_device{}());
-//    std::uniform_int_distribution<int> kindDist(0, 5);
-//    std::uniform_real_distribution<float> xDist(50.f, SCREEN_WIDTH - 50.f);
-//    std::uniform_real_distribution<float> speedDist(80.f, 150.f); // tốc độ rơi (pixel/sec)
-//
-//    float x = xDist(rng);
-//    float y = -50.f; // xuất hiện trên màn hình
-//    BonusType kind = static_cast<BonusType>(kindDist(rng));
-//
-//    auto present = std::make_unique<Present>(kind, x, y);
-//    present->set_is_on_screen(true);
-//    //present->set_speed(speedDist(rng)); // set tốc độ rơi
-//
-//    presents.push_back(std::move(present));
-//}
+   static std::mt19937 rng(std::random_device{}());
+   std::uniform_int_distribution<int> kindDist(0, 5);
+   std::uniform_real_distribution<float> xDist(50.f, SCREEN_WIDTH - 50.f);
+   std::uniform_real_distribution<float> speedDist(80.f, 150.f); // tốc độ rơi (pixel/sec)
+
+   float x = xDist(rng);
+   float y = -50.f; // xuất hiện trên màn hình
+   BonusType kind = static_cast<BonusType>(kindDist(rng));
+
+   auto present = std::make_unique<Present>(kind, x, y);
+   present->set_is_on_screen(true);
+   //present->set_speed(speedDist(rng)); // set tốc độ rơi
+
+   presents.push_back(std::move(present));
+}
 
 // --------------------- Round 1: Chicken -----------------------
 void LevelManager::processChickenVsPlayer(float dt, MainObject& player, sf::RenderWindow& window) {
@@ -241,7 +242,6 @@ void LevelManager::processBossVsPlayer(float dt, MainObject& player, sf::RenderW
         if (isPaused || !boss->get_is_on_screen() || player.get_health() <= 0) {
             continue;
         }
-
         boss->moving_toward_player(&player);
         boss->firing_eggs();
         auto& egg_list = boss->get_egg_list();
@@ -328,6 +328,7 @@ void LevelManager::update(float dt, MainObject& player, sf::RenderWindow& window
     /*if (current_wave_ == 1) processChickenVsPlayer(dt, player, window);
     if (current_wave_ == 2) updateRound2(dt, player);*/
     if (current_wave_ == 1) updateRound3(dt, player);
+
 
     for (auto it = explosions.begin(); it != explosions.end(); ) {
         auto& e = *it;
@@ -428,6 +429,7 @@ void LevelManager::spawn_round3_wave1() {
         }
         std::cout << "Spawned wave 1: " << chickens.size() << " chickens" << std::endl;
 }
+
 void LevelManager::spawn_round3_wave2(MainObject& player) {
      //bosses.clear();
      //Boss* boss = new Boss;
@@ -476,10 +478,11 @@ void LevelManager::reset() {
     asteroidRoundElapsed = 0.f;
 }
 
+
 void LevelManager::cleanUpWave() {
     chickens.clear();
     asteroids.clear();
     bosses.clear();
     explosions.clear();
-    presents.clear(); // <== thêm dòng này
+    presents.clear();
 }
