@@ -122,6 +122,8 @@ public:
     Present* get_present() const { return has_present_ ? present_.get() : nullptr; }
 	  ShootingMode get_shooting_mode() const { return shooting_mode_; }
     bool get_has_a_present() const { return has_present_; }
+    sf::FloatRect get_wing_rect() const { return wing_rect_; }
+    sf::Time get_last_egg_time() const { return last_egg_time_; }
     bool get_has_a_wing() const { return has_wing_; }
     bool get_alive() const { return health_ > 0 && is_on_screen_; }
     void set_alive(bool alive) {
@@ -154,7 +156,7 @@ public:
     void render_the_eggs(sf::RenderWindow& window);
     void handle_shooting_eggs_downward(float dt);
     void handle_shooting_eggs_toward_player(MainObject* main_object, float dt);
-    void update_the_eggs();
+    void update_the_eggs(float dt);
     void play_hit_sound();
     void play_laying_eggs_sound();
     double get_angle() const { return angle_; }

@@ -35,6 +35,13 @@ void Egg::set_rect_cordinate_width_and_height(const float& x, const float& y, co
     anim_ = Animation(is_broken_ ? broken_egg_ : nice_egg_, 0, 0, is_broken_ ? 76 : 32, is_broken_ ? 57 : 41, 1, 0);
     anim_.sprite_.setPosition(x, y);
     radius_ = (is_broken_ ? 76 : 32) / 2;
+    if (!anim_.sprite_.getTexture()) {
+        static sf::Texture texture;
+        if (!texture.loadFromFile("res/image/egg.png")) {
+            std::cerr << "Failed to load egg texture\n";
+        }
+        anim_.sprite_.setTexture(texture);
+    }
 }
 
 void Egg::set_rect_width_and_height(const float& width, const float& height)
@@ -45,15 +52,15 @@ void Egg::set_rect_width_and_height(const float& width, const float& height)
 
 sf::FloatRect Egg::get_rect() const
 {
-    float width = is_broken_ ? 76 : EGG_WIDTH;
-    float height = is_broken_ ? 57 : EGG_HEIGHT;
+    float width = is_broken_ ? 76 : EGG_WIDTH*0.7;
+    float height = is_broken_ ? 57 : EGG_HEIGHT*0.7;
     return sf::FloatRect(x - width / 2, y - height / 2, width, height);
 }
 
 sf::FloatRect Egg::get_rect_width_height_with_scale(const double& scale) const
 {
-    float width = is_broken_ ? 76 : EGG_WIDTH;
-    float height = is_broken_ ? 57 : EGG_HEIGHT;
+    float width = is_broken_ ? 76 : EGG_WIDTH * 0.7;
+    float height = is_broken_ ? 57 : EGG_HEIGHT * 0.7;
     return sf::FloatRect(x - (width * scale) / 2, y - (height * scale) / 2, width * scale, height * scale);
 }
 
@@ -113,12 +120,13 @@ void Egg::move_horizontally()
         alive_ = false;
 }
 
-void Egg::update()
+void Egg::update(float dt)
 {
     if (!alive_) return;
     if (!is_broken_)
         move_diagonally();
-    anim_.update();
+    /*anim_.update();*/
+    anim_.sprite_.move(v_x_ * dt, v_y_ * dt);
 }
 
 void Egg::free()
