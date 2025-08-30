@@ -42,12 +42,17 @@ public:
 
     bool get_is_broken() const { return is_broken_; }
     void set_is_broken(const bool& is_broken) { is_broken_ = is_broken; }
+    bool is_off_screen() const {
+        // Example: Check if egg is off-screen (adjust bounds as needed)
+        sf::Vector2f pos = anim_.sprite_.getPosition();
+        return pos.x < 0 || pos.x > 800 || pos.y < 0 || pos.y > 600;
+    }
 
     void move_diagonally();
     void move_horizontally();
     void render(sf::RenderWindow& window);
     void draw(sf::RenderWindow& window) override;
-    void update() override;
+    void update(float dt) ;
     void free();
 };
 

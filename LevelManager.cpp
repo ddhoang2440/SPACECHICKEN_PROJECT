@@ -2,39 +2,62 @@
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
+
+#include <random>
+
 #include <ctime>
 
 LevelManager::LevelManager()
     : current_level_(1), score(0), chickenKillCount(0),
     isPaused(false), asteroidRoundTime(27.f), asteroidRoundElapsed(0.f),
-	round2Active(false), presentSpawnTimer(0.f), presentSpawnInterval(2.f), wave1_part2_spawned(false)
+	round2Active(false), presentSpawnTimer(0.f), presentSpawnInterval(2.f), round1_wave2_spawned(false)
 {
     srand(static_cast<unsigned int>(time(nullptr)));
 }
 
-
 void LevelManager::spawnRandomPresent() {
 
-    static std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> kindDist(0, 5);
-    std::uniform_real_distribution<float> xDist(50.f, SCREEN_WIDTH - 50.f);
-    std::uniform_real_distribution<float> speedDist(80.f, 150.f); // tốc độ rơi (pixel/sec)
+   static std::mt19937 rng(std::random_device{}());
+   std::uniform_int_distribution<int> kindDist(0, 5);
+   std::uniform_real_distribution<float> xDist(50.f, SCREEN_WIDTH - 50.f);
+   std::uniform_real_distribution<float> speedDist(80.f, 150.f); // tốc độ rơi (pixel/sec)
 
-    float x = xDist(rng);
-    float y = -50.f; // xuất hiện trên màn hình
-    BonusType kind = static_cast<BonusType>(kindDist(rng));
+   float x = xDist(rng);
+   float y = -50.f; // xuất hiện trên màn hình
+   BonusType kind = static_cast<BonusType>(kindDist(rng));
 
-    auto present = std::make_unique<Present>(kind, x, y);
-    present->set_is_on_screen(true);
-    //present->set_speed(speedDist(rng)); // set tốc độ rơi
+   auto present = std::make_unique<Present>(kind, x, y);
+   present->set_is_on_screen(true);
+   //present->set_speed(speedDist(rng)); // set tốc độ rơi
 
-    presents.push_back(std::move(present));
+   presents.push_back(std::move(present));
 }
 
 // --------------------- Round 1: Chicken -----------------------
 void LevelManager::processChickenVsPlayer(float dt, MainObject& player, sf::RenderWindow& window) {
-    // 1. Xử lý va chạm đạn của người chơi với gà
-    for (auto* ammo : player.get_ammo_list()) {
+    //bool hitThisFrame = false;
+
+    for (auto& chicken : chickens) {
+        if (isPaused || !chicken->get_is_on_screen() || chicken->get_health() <= 0)
+            continue;
+
+        switch (chicken->get_movement_pattern()) {
+        case MovementPattern::CIRCLE:   chicken->moving_like_a_circle(); break;
+        case MovementPattern::DIAGONAL: chicken->moving_diagonally(); break;
+        case MovementPattern::PARABOLA: chicken->moving_parabola(); break;
+        case MovementPattern::UP_DOWN:  chicken->moving_up_and_down(); break;
+        default:                        chicken->moving_back_and_forth(); break;
+        }
+
+        //chicken->render_the_eggs(window);
+        if (chicken->get_shooting_mode() == ShootingMode::DOWNWARD)
+            chicken->handle_shooting_eggs_downward(dt);
+        else
+            chicken->handle_shooting_eggs_toward_player(&player, dt);
+    }
+
+    // Va chạm đạn với gà
+     for (auto* ammo : player.get_ammo_list()) {
         if (!ammo->is_alive()) continue;
 
         for (auto& chicken : chickens) {
@@ -52,37 +75,18 @@ void LevelManager::processChickenVsPlayer(float dt, MainObject& player, sf::Rend
 
         if (chicken->get_health() > 0) {
             all_chickens_are_dead = false;
-
-            if (isPaused || !chicken->get_is_on_screen()) {
-                ++it;
-                continue;
-            }
-
-            // --- Di chuyển theo pattern ---
-            switch (chicken->get_movement_pattern()) {
-            case MovementPattern::CIRCLE:   chicken->moving_like_a_circle(); break;
-            case MovementPattern::DIAGONAL: chicken->moving_diagonally(); break;
-            case MovementPattern::PARABOLA: chicken->moving_parabola(); break;
-            case MovementPattern::UP_DOWN:  chicken->moving_up_and_down(); break;
-            default:                        chicken->moving_back_and_forth(); break;
-            }
-
-            // --- Bắn trứng ---
-            if (chicken->get_shooting_mode() == ShootingMode::DOWNWARD) {
-                chicken->handle_shooting_eggs_downward(dt);
-            }
-            else if (chicken->get_shooting_mode() == ShootingMode::TOWARD_PLAYER) {
-                chicken->handle_shooting_eggs_toward_player(&player, dt);
-            }
-
-            // --- Update eggs & present ---
-            chicken->update(dt);
-
-            // --- Xử lý va chạm player ---
-            if (player.get_health() > 0) {
-                player.process_if_hit_by_chicken(chicken.get());
-                player.process_if_hit_by_eggs(chicken.get());
-            }
+        auto exp = std::make_unique<Explosion>();
+        exp->load_animation_sprite("res/image/explosion.png");
+        exp->set_clips();
+        exp->set_coordinates(chicken->x, chicken->y);
+        exp->set_is_on_screen(true);
+        explosions.push_back(std::move(exp));
+        if (Present* present = chicken->generate_present()) {
+            std::cout << "Generated present for chicken at (" << chicken->x << ", " << chicken->y << ")" << std::endl;
+            add_present(present);
+        }
+        chicken->set_is_on_screen(false);
+    }
 
             ++it;
         }
@@ -120,17 +124,16 @@ void LevelManager::processChickenVsPlayer(float dt, MainObject& player, sf::Rend
             ++it;
         }
     }
-
     // 4. Kiểm tra chuyển wave
     if (all_chickens_are_dead && current_level_ == 1) {
-        if (!wave1_part2_spawned) {
-            wave1_part2_spawned = true;
+        if (!round1_part2_spawned) {
+            round1_part2_spawned = true;
             cleanUpWave();
-            spawn_wave1_round2(player);
+            spawn_round1_wave2(player);
         }
         else {
             cleanUpWave();
-            spawn_wave2(player);
+            round_round2(player);
         }
     }
 }
@@ -138,77 +141,77 @@ void LevelManager::processChickenVsPlayer(float dt, MainObject& player, sf::Rend
 
 // --------------------- Round 2: Asteroid -----------------------
 void LevelManager::spawnAsteroids(int num) {
-    const int maxAsteroidsOnScreen = 8;
-    if (asteroids.size() + num > maxAsteroidsOnScreen) {
-        num = maxAsteroidsOnScreen - static_cast<int>(asteroids.size());
-        if (num <= 0) return;
-    }
-
-    for (int i = 0; i < num; ++i) {
-        auto asteroid = std::make_unique<Asteroid>();
-
-        float x = static_cast<float>(rand() % SCREEN_WIDTH);
-        float y = -50.f - static_cast<float>(rand() % 200);
-        asteroid->set_rect_cordinate(x, y);
-
-
-        asteroid->set_speed(30.f); // 50-100
-
-        int size_level = rand() % 3; // 0=small,1=medium,2=large
-        asteroid->set_size_level(size_level);
-
-        // Gán health theo size
-        switch (size_level) {
-        case 0: asteroid->set_health(5); break;   // nhỏ
-        case 1: asteroid->set_health(10); break;  // vừa
-        case 2: asteroid->set_health(20); break;  // lớn
-        }
-
-        asteroid->set_is_on_screen(true);
-        asteroids.push_back(std::move(asteroid));
-    }
+//    const int maxAsteroidsOnScreen = 8;
+//    if (asteroids.size() + num > maxAsteroidsOnScreen) {
+//        num = maxAsteroidsOnScreen - static_cast<int>(asteroids.size());
+//        if (num <= 0) return;
+//    }
+//
+//    for (int i = 0; i < num; ++i) {
+//        auto asteroid = std::make_unique<Asteroid>();
+//
+//        float x = static_cast<float>(rand() % SCREEN_WIDTH);
+//        float y = -50.f - static_cast<float>(rand() % 200);
+//        asteroid->set_rect_cordinate(x, y);
+//
+//
+//        asteroid->set_speed(30.f); // 50-100
+//
+//        int size_level = rand() % 3; // 0=small,1=medium,2=large
+//        asteroid->set_size_level(size_level);
+//
+//        // Gán health theo size
+//        switch (size_level) {
+//        case 0: asteroid->set_health(5); break;   // nhỏ
+//        case 1: asteroid->set_health(10); break;  // vừa
+//        case 2: asteroid->set_health(20); break;  // lớn
+//        }
+//
+//        asteroid->set_is_on_screen(true);
+//        asteroids.push_back(std::move(asteroid));
+//    }
 }
 
 void LevelManager::updateRound2(float dt, MainObject& player) {
-    if (!round2Active) return;
+    //if (!round2Active) return;
 
-    asteroidRoundElapsed += dt;
+    //asteroidRoundElapsed += dt;
 
-    // Spawn chậm
-    static float spawnTimer = 0.f;
-    spawnTimer += dt;
+    //// Spawn chậm
+    //static float spawnTimer = 0.f;
+    //spawnTimer += dt;
 
-    const int MAX_ASTEROID = 10; // số tối đa trên màn hình
+    //const int MAX_ASTEROID = 10; // số tối đa trên màn hình
 
-    if (spawnTimer >= 1.5f) { // spawn mỗi 1.5 giây
-        int toSpawn = 1 + rand() % 2; // spawn 1-2 asteroid mỗi lần
-        if (asteroids.size() + toSpawn > MAX_ASTEROID)
-            toSpawn = MAX_ASTEROID - asteroids.size();
+    //if (spawnTimer >= 1.5f) { // spawn mỗi 1.5 giây
+    //    int toSpawn = 1 + rand() % 2; // spawn 1-2 asteroid mỗi lần
+    //    if (asteroids.size() + toSpawn > MAX_ASTEROID)
+    //        toSpawn = MAX_ASTEROID - asteroids.size();
 
-        if (toSpawn > 0)
-            spawnAsteroids(toSpawn);
+    //    if (toSpawn > 0)
+    //        spawnAsteroids(toSpawn);
 
-        spawnTimer = 0.f; // reset timer
-    }
+    //    spawnTimer = 0.f; // reset timer
+    //}
 
-    // Update asteroid & xử lý va chạm
-    processAsteroidVsPlayer(dt, player);
+    //// Update asteroid & xử lý va chạm
+    //processAsteroidVsPlayer(dt, player);
 
-    // Remove asteroid chết hoặc ra ngoài màn hình
-    for (auto it = asteroids.begin(); it != asteroids.end(); ) {
-        if (!(*it)->get_is_on_screen() || (*it)->get_health() <= 0)
-            it = asteroids.erase(it);
-        else
-            ++it;
-    }
+    //// Remove asteroid chết hoặc ra ngoài màn hình
+    //for (auto it = asteroids.begin(); it != asteroids.end(); ) {
+    //    if (!(*it)->get_is_on_screen() || (*it)->get_health() <= 0)
+    //        it = asteroids.erase(it);
+    //    else
+    //        ++it;
+    //}
 
-    // Hết thời gian round → wave3
-    if (asteroidRoundElapsed >= asteroidRoundTime) {
-        round2Active = false;
-        asteroidRoundElapsed = 0.f;
-        asteroids.clear();
-        spawn_wave3(player);
-    }
+    //// Hết thời gian round → wave3
+    //if (asteroidRoundElapsed >= asteroidRoundTime) {
+    //    round2Active = false;
+    //    asteroidRoundElapsed = 0.f;
+    //    asteroids.clear();
+    //    spawn_wave3(player);
+    //}
 }
 
 void LevelManager::processAsteroidVsPlayer(float dt, MainObject& player) {
@@ -237,16 +240,34 @@ void LevelManager::processAsteroidVsPlayer(float dt, MainObject& player) {
         }
     }
 }
-
+void LevelManager::updateRound3(float dt, MainObject& player) {
+    if (bosses.empty()) {
+        processChickenVsPlayer(dt, player, window);
+    }else
+	processBossVsPlayer(dt, player, window);
+}
 // --------------------- Round 3: Boss -----------------------
 void LevelManager::processBossVsPlayer(float dt, MainObject& player, sf::RenderWindow& window) {
     bool hitThisFrame = false;
 
     for (auto& boss : bosses) {
-        if (isPaused || !boss->get_is_on_screen() || player.get_health() <= 0) continue;
-
+        if (isPaused || !boss->get_is_on_screen() || player.get_health() <= 0) {
+            continue;
+        }
         boss->moving_toward_player(&player);
         boss->firing_eggs();
+        auto& egg_list = boss->get_egg_list();
+        for (auto it = egg_list.begin(); it != egg_list.end();) {
+            if ((*it)->is_off_screen()) {
+                it = egg_list.erase(it);
+            }
+            else {
+                (*it)->update(dt);
+                (*it)->draw(window);
+                ++it;
+            }
+        }
+        
         boss->update(dt);
 
         if (!hitThisFrame) {
@@ -265,7 +286,6 @@ void LevelManager::processBossVsPlayer(float dt, MainObject& player, sf::RenderW
             exp->set_coordinates(boss->x, boss->y);
             exp->set_is_on_screen(true);
             explosions.push_back(std::move(exp));
-
             boss->set_is_on_screen(false);
             continue;
         }
@@ -286,12 +306,16 @@ void LevelManager::render(sf::RenderWindow& window) {
     for (auto& c : chickens) {
         if (c->get_is_on_screen()) {
             c->draw(window);
-            c->render_the_eggs(window);   //  thêm dòng này để vẽ trứng
+			c->render_the_eggs(window);
         }
     }
-
     for (auto& a : asteroids)  if (a->get_is_on_screen()) a->draw(window);
-    for (auto& b : bosses)     if (b->get_is_on_screen()) b->draw(window);
+    for (auto& b : bosses) {
+        if (b->get_is_on_screen()) {
+            b->draw(window);
+			b->render_the_eggs(window);
+        }
+    }
     for (auto& p : presents)   if (p->get_is_on_screen()) p->draw(window);
     for (auto& e : explosions) if (e->get_is_on_screen()) e->draw(window);
 }
@@ -300,18 +324,23 @@ void LevelManager::render(sf::RenderWindow& window) {
 // --------------------- Update chung -----------------------
 void LevelManager::update(float dt, MainObject& player, sf::RenderWindow& window) {
     if (isPaused) return;
-
-    // Spawn vật phẩm ngẫu nhiên
-    presentSpawnTimer += dt;
-    if (presentSpawnTimer >= presentSpawnInterval) {
-        presentSpawnTimer = 0.f;
-        spawnRandomPresent();
+    player.update(dt);
+    for (auto& ch : chickens) {
+        if (ch->get_is_on_screen()) {
+            ch->update(dt);
+        }
     }
+     
+    //// Spawn vật phẩm ngẫu nhiên
+    //presentSpawnTimer += dt;
+    //if (presentSpawnTimer >= presentSpawnInterval) {
+    //    presentSpawnTimer = 0.f;
+    //    spawnRandomPresent();
+    //}
 
     if (current_level_ == 1) processChickenVsPlayer(dt, player, window);
     if (current_level_ == 2) updateRound2(dt, player);
-    if (current_level_ == 3) processBossVsPlayer(dt, player, window);
-
+    if (current_level_ == 3) updateRound3(dt, player);
     for (auto it = explosions.begin(); it != explosions.end(); ) {
         auto& e = *it;
         if (e->get_is_on_screen()) e->update();
@@ -320,8 +349,8 @@ void LevelManager::update(float dt, MainObject& player, sf::RenderWindow& window
     }
 }
 
-// --------------------- Wave spawn -----------------------
-void LevelManager::spawn_wave1_round1() {
+
+void LevelManager::spawn_round1_wave1() {
     current_level_ = 1;
     chickens.clear();
 
@@ -371,7 +400,7 @@ void LevelManager::spawn_wave1_round1() {
 }
 
 
-void LevelManager::spawn_wave1_round2(MainObject& player) {
+void LevelManager::spawn_round1_wave2(MainObject& player) {
     current_level_ = 1;
     chickens.clear();
 
@@ -425,15 +454,16 @@ void LevelManager::spawn_wave1_round2(MainObject& player) {
 
 // --------------------- Wave 2: Asteroid -----------------------
 void LevelManager::spawn_wave2(MainObject& player) {
+
     current_level_ = 2;
     round2Active = true;
     asteroidRoundElapsed = 0.f;
     asteroids.clear();
 
-    // Không spawn ngay nhiều asteroid nữa
-    // spawnAsteroids(5 + rand() % 4);
+    //// Không spawn ngay nhiều asteroid nữa
+    //// spawnAsteroids(5 + rand() % 4);
 
-    std::cout << "Wave 2 started: dodge asteroids for " << asteroidRoundTime << " seconds" << std::endl;
+    //std::cout << "Wave 2 started: dodge asteroids for " << asteroidRoundTime << " seconds" << std::endl;
 }
 
  //--------------------- Wave 3: Boss -----------------------
@@ -447,9 +477,62 @@ void LevelManager::spawn_wave3(MainObject& player) {
     boss->set_is_on_screen(true);
     bosses.push_back(std::move(boss));
 
-    std::cout << "Spawned wave 3: Boss fight!" << std::endl;
+    std::cout << "Spawned wave 3: Boss fight!" << std::endl;*/
+     chickens.clear();
+     const int rows = 3;
+     const int cols = 5;
+        float spacing_x = SCREEN_WIDTH / (cols + 1.f);
+        float spacing_y = 100.f;
+        float start_y = 50.f;
+        float slight_range = 50.f;
+        float speed = 2.f;
+        for (int row = 0; row < rows; ++row) {
+            for (int col = 0; col < cols; ++col) {
+                auto* chicken = new Chicken();
+                float init_x = spacing_x * (col + 1);
+                float init_y = start_y + spacing_y * row;
+                chicken->set_rect_cordinate(init_x, init_y);
+                chicken->load_animation_sprite("res/image/chicken123.png");
+                chicken->set_clips();
+                chicken->set_is_on_screen(true);
+                chicken->set_health(3);
+                chicken->set_speed(speed);
+                chicken->set_y_direction(1.f);
+                chicken->set_y_bounds(init_y - slight_range, init_y + slight_range);
+                chicken->set_movement_pattern(MovementPattern::DIAGONAL);
+                chicken->set_shooting_mode(ShootingMode::DOWNWARD);
+                chickens.push_back(std::unique_ptr<Chicken>(chicken));
+            }
+        }
+        std::cout << "Spawned wave 1: " << chickens.size() << " chickens" << std::endl;
 }
 
+void LevelManager::spawn_round3_wave2(MainObject& player) {
+     //bosses.clear();
+     //Boss* boss = new Boss;
+     //boss->load_animation_sprite("res/image/bossMain.png");
+     //boss->set_clips();
+     //boss->set_rect_cordinate(SCREEN_WIDTH / 2, -200); // Xuất hiện từ trên
+     //boss->setTargetPosition(SCREEN_WIDTH / 2, 150); // Di chuyển đến vị trí chiến đấu
+     //boss->set_is_on_screen(true);
+     //boss->set_health(150); // Có thể tăng máu
+     //bosses.push_back(std::unique_ptr<Boss>(boss));
+     //// Có thể play âm thanh boss xuất hiện
+     //std::cout << "Boss spawned for level 3!" << std::endl;
+    const int boss_number = 1;
+    for (int i = 0; i < boss_number; ++i) {
+        Boss* boss = new Boss;
+        boss->load_animation_sprite("res/image/boss.png");
+        boss->set_clips();
+        /*boss->set_rect_cordinate(i == 0 ? 100 : 700, 100);*/
+        boss->set_rect_cordinate(SCREEN_WIDTH / 2, -200); // Xuất hiện từ trên
+        boss->setTargetPosition(SCREEN_WIDTH / 2, 150); // Di chuyển đến vị trí chiến đấu
+        boss->set_is_on_screen(true);
+        boss->set_health(50);
+        bosses.push_back(std::unique_ptr<Boss>(boss));
+    }
+    std::cout << "Initialized " << bosses.size() << " bosses for level 3" << std::endl;
+}
 // --------------------- Cleanup -----------------------
 void LevelManager::cleanUpChickens() {
     chickens.clear();
@@ -472,10 +555,11 @@ void LevelManager::reset() {
     asteroidRoundElapsed = 0.f;
 }
 
+
 void LevelManager::cleanUpWave() {
     chickens.clear();
     asteroids.clear();
     bosses.clear();
     explosions.clear();
-    presents.clear(); // <== thêm dòng này
+    presents.clear();
 }

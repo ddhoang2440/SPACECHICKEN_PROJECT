@@ -536,6 +536,7 @@ void MainObject::set_rect_cordinate(const float& x, const float& y)
     this->x = x;
     this->y = y;
     anim_.sprite_.setPosition(x, y);
+
 }
 
 void MainObject::set_rect_cordinate_width_and_height(const float& x, const float& y, const float& width, const float& height)

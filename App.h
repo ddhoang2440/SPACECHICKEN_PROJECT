@@ -1,4 +1,4 @@
-﻿#ifndef APP_H
+#ifndef APP_H
 #define APP_H
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
@@ -27,7 +27,7 @@ private:
     sf::RenderWindow window;
     UIManager ui;
     Menu menu;
-	CustomCursor cursor;
+    CustomCursor cursor;
     PauseMenu pauseMenu;
     SettingsMenu settingsMenu;
     MainObject player;
@@ -43,5 +43,4 @@ private:
     float enterEffectTime;
     bool isPaused;
 };
-
 #endif

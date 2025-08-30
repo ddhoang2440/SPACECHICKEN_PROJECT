@@ -307,10 +307,14 @@ void Chicken::handle_shooting_eggs_toward_player(MainObject* main_object, float 
     }
 }
 
-void Chicken::update_the_eggs()
+void Chicken::update_the_eggs(float dt)
 {
-    for (auto it = eggs_list_.begin(); it != eggs_list_.end();) {
-        if (!(*it)->get_alive()) {
+    for (auto it = eggs_list_.begin(); it != eggs_list_.end();)
+    {
+        (*it)->update(dt);
+        if (!(*it)->get_alive())
+        {
+
             eggs_get_destroyed_sound_.play();
             it = eggs_list_.erase(it);
         }
